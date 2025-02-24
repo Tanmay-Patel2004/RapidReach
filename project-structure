@@ -1,0 +1,23 @@
+src/
+├── assets/
+│   └── images/
+├── components/
+│   ├── common/
+│   └── layout/
+├── features/
+│   └── auth/
+├── pages/
+├── routes/
+├── services/
+├── store/
+├── styles/
+└── utils/
+
+project/
+├── frontend/          # Your existing React code
+└── backend/
+    ├── config/
+    ├── controllers/
+    ├── models/
+    ├── routes/
+    └── server.js 
