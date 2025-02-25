@@ -90,7 +90,7 @@ export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUser = (state) => state.auth.user;
 export const selectToken = (state) => state.auth.token;
 export const selectPermissions = (state) => state.auth.permissions;
-export const selectUserRole = (state) => state.auth.user?.role;
+export const selectUserRole = (state) => state.auth.user?.role?.name || null;
 export const selectAuthError = (state) => state.auth.error;
 export const selectAuthLoading = (state) => state.auth.loading;
 

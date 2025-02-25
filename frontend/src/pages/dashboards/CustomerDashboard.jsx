@@ -1,13 +1,15 @@
-import { Typography, Box } from '@mui/material';
+import React from "react";
+import { Typography, Container } from "@mui/material";
 
 const CustomerDashboard = () => {
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4">
-        This is Customer Dashboard
+    <Container>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Customer Dashboard
       </Typography>
-    </Box>
+      <Typography>Welcome to your customer dashboard!</Typography>
+    </Container>
   );
 };
 
-export default CustomerDashboard; 
+export default CustomerDashboard;

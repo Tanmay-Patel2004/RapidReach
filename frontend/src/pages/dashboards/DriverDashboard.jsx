@@ -1,13 +1,15 @@
-import { Typography, Box } from '@mui/material';
+import React from "react";
+import { Typography, Container } from "@mui/material";
 
 const DriverDashboard = () => {
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4">
-        This is Driver Dashboard
+    <Container>
+      <Typography variant="h4" component="h1" gutterBottom>
+        Driver Dashboard
       </Typography>
-    </Box>
+      <Typography>Welcome to your driver dashboard!</Typography>
+    </Container>
   );
 };
 
-export default DriverDashboard; 
+export default DriverDashboard;

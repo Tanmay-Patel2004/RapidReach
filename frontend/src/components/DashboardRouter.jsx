@@ -11,9 +11,9 @@ const DashboardRouter = () => {
   switch (userRole?.name) {
     case 'Super Admin':
       return <AdminDashboard />;
-    case 'Driver':
+    case 'driver':
       return <DriverDashboard />;
-    case 'Customer':
+    case 'customer':
       return <CustomerDashboard />;
     default:
       return (
