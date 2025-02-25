@@ -77,7 +77,7 @@ const getPermissionById = async (req, res) => {
 const updatePermission = async (req, res) => {
   try {
     const { name, title, description, isActive, sectionName } = req.body;
-    
+
     const permission = await Permission.findById(req.params.id);
     if (!permission) {
       return res.status(404).json({ message: '❌ Permission not found' });
