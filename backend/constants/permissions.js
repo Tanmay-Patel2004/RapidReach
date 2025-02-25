@@ -1,11 +1,5 @@
-/**
- * Permission Constants
- * These constants are used to validate user permissions for API calls
- * Each permission has a unique identifier (number)
- */
-
-export const PERMISSIONS = {
-  // User Management Permissions
+// Export as CommonJS module
+const PERMISSIONS = {
   READ_ALL_USERS: {
     permission_id: 1,
     name: 'READ_ALL_USERS',
@@ -44,7 +38,7 @@ export const PERMISSIONS = {
 };
 
 // Simple array of permission IDs for quick validation
-export const PERMISSION_IDS = {
+const PERMISSION_IDS = {
   READ_ALL_USERS: 1,
   EDIT_SINGLE_USER: 2,
   ADD_SINGLE_USER: 3,
@@ -53,22 +47,29 @@ export const PERMISSION_IDS = {
 };
 
 // Helper function to check if a user has a specific permission
-export const hasPermission = (userPermissions, requiredPermissionId) => {
+const hasPermission = (userPermissions, requiredPermissionId) => {
   return userPermissions.some(permission => permission.id === requiredPermissionId);
 };
 
 // Helper function to check if a user has all required permissions
-export const hasAllPermissions = (userPermissions, requiredPermissionIds) => {
+const hasAllPermissions = (userPermissions, requiredPermissionIds) => {
   return requiredPermissionIds.every(permissionId => 
     userPermissions.some(permission => permission.id === permissionId)
   );
 };
 
 // Helper function to check if a user has any of the required permissions
-export const hasAnyPermission = (userPermissions, requiredPermissionIds) => {
+const hasAnyPermission = (userPermissions, requiredPermissionIds) => {
   return requiredPermissionIds.some(permissionId => 
     userPermissions.some(permission => permission.id === permissionId)
   );
 };
 
-export default PERMISSIONS; 
+// Export using CommonJS
+module.exports = {
+  PERMISSIONS,
+  PERMISSION_IDS,
+  hasPermission,
+  hasAllPermissions,
+  hasAnyPermission
+};
