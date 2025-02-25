@@ -1,13 +1,55 @@
-import { Typography, Box } from '@mui/material';
+import { Typography, Box, Button, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import {
+  Person as PersonIcon,
+  Logout as LogoutIcon,
+} from "@mui/icons-material";
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+
   return (
     <Box sx={{ p: 3 }}>
-      <Typography variant="h4">
-        This is Admin Dashboard
-      </Typography>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}>
+        <Typography variant="h4">Admin Dashboard</Typography>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="contained"
+            startIcon={<PersonIcon />}
+            onClick={() => navigate("/profile")}
+            sx={{
+              backgroundColor: "primary.main",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+            }}>
+            Profile
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<LogoutIcon />}
+            sx={{
+              borderColor: "error.main",
+              color: "error.main",
+              "&:hover": {
+                backgroundColor: "error.lighter",
+                borderColor: "error.dark",
+              },
+            }}>
+            Logout
+          </Button>
+        </Stack>
+      </Box>
+
+      <Typography>Welcome to the Admin Dashboard</Typography>
     </Box>
   );
 };
 
-export default AdminDashboard; 
+export default AdminDashboard;

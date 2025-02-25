@@ -1,14 +1,55 @@
 import React from "react";
-import { Typography, Container } from "@mui/material";
+import { Typography, Box, Button, Stack } from "@mui/material";
+import { useNavigate } from "react-router-dom";
+import {
+  Person as PersonIcon,
+  Logout as LogoutIcon,
+} from "@mui/icons-material";
 
 const DriverDashboard = () => {
+  const navigate = useNavigate();
+
   return (
-    <Container>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Driver Dashboard
-      </Typography>
-      <Typography>Welcome to your driver dashboard!</Typography>
-    </Container>
+    <Box sx={{ p: 3 }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          mb: 3,
+        }}>
+        <Typography variant="h4">Driver Dashboard</Typography>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="contained"
+            startIcon={<PersonIcon />}
+            onClick={() => navigate("/profile")}
+            sx={{
+              backgroundColor: "primary.main",
+              "&:hover": {
+                backgroundColor: "primary.dark",
+              },
+            }}>
+            Profile
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<LogoutIcon />}
+            sx={{
+              borderColor: "error.main",
+              color: "error.main",
+              "&:hover": {
+                backgroundColor: "error.lighter",
+                borderColor: "error.dark",
+              },
+            }}>
+            Logout
+          </Button>
+        </Stack>
+      </Box>
+
+      <Typography>Welcome to your Driver Dashboard</Typography>
+    </Box>
   );
 };
 

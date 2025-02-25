@@ -68,7 +68,7 @@ const LoginPage = () => {
           permissionsCount: data.permissions.length,
         });
 
-        navigate('/dashboard');
+        navigate("/dashboard");
       } else {
         throw new Error(data.message || "Login failed");
       }

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
 import logger from "./utils/logger";
@@ -7,6 +7,7 @@ import SignUpPage from "./pages/SignUpPage";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import DriverDashboard from "./pages/dashboards/DriverDashboard";
+import ProfilePage from "./pages/ProfilePage";
 import {
   restoreAuthState,
   selectIsAuthenticated,
@@ -18,15 +19,22 @@ function App() {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const userRole = useSelector(selectUserRole);
 
+  // Run only once when component mounts
   useEffect(() => {
     dispatch(restoreAuthState());
     logger.info("Auth state restored from localStorage");
-  }, [dispatch]);
+  }, []); // Empty dependency array
 
-  // Function to determine which dashboard to show based on role
-  const DashboardComponent = () => {
-    console.log('Current user role:', userRole);
-    switch (userRole) {
+  // Memoize the DashboardComponent to prevent unnecessary re-renders
+  const DashboardComponent = useMemo(() => {
+    if (!userRole) {
+      logger.warn("No user role found");
+      return null;
+    }
+
+    logger.info(`Rendering dashboard for role: ${userRole}`);
+
+    switch (userRole.toLowerCase()) {
       case "admin":
         return <AdminDashboard />;
       case "customer":
@@ -34,16 +42,35 @@ function App() {
       case "driver":
         return <DriverDashboard />;
       default:
-        console.log('No matching role, redirecting to login');
+        logger.warn(`Unknown role: ${userRole}`);
         return <Navigate to="/" replace />;
     }
+  }, [userRole]); // Only re-run when userRole changes
+
+  // Protected Route wrapper
+  const ProtectedRoute = ({ children }) => {
+    if (!isAuthenticated) {
+      return <Navigate to="/" replace />;
+    }
+    return children;
   };
 
   return (
     <Routes>
       {isAuthenticated ? (
         <>
-          <Route path="/dashboard" element={<DashboardComponent />} />
+          <Route
+            path="/dashboard"
+            element={<ProtectedRoute>{DashboardComponent}</ProtectedRoute>}
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </>
