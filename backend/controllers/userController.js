@@ -1,5 +1,5 @@
 const User = require('../models/userModel');
-const cloudinary = require('cloudinary').v2;
+const uploadToS3 = require('../utils/s3Upload');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -47,23 +47,32 @@ const updateUser = async (req, res) => {
       return res.status(404).json({ message: '❌ User not found' });
     }
 
+    // Handle profile picture upload if file is present
+    let profilePictureUrl = user.profilePicture;
+    if (req.file) {
+      try {
+        console.log('📁 Received file:', {
+          filename: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size
+        });
+
+        profilePictureUrl = await uploadToS3(req.file);
+      } catch (uploadError) {
+        console.error('❌ Detailed Upload Error:', uploadError);
+        return res.status(400).json({
+          message: 'Error uploading profile picture',
+          details: uploadError.message
+        });
+      }
+    }
+
     // Update fields
     user.firstName = firstName || user.firstName;
     user.lastName = lastName || user.lastName;
     user.email = email || user.email;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
-
-    // Handle profile picture upload
-    if (req.file) {
-      // If user already has a profile picture, delete it from cloudinary
-      if (user.profilePicture && user.profilePicture !== 'https://res.cloudinary.com/rapidreach/image/upload/v1/default-avatar.png') {
-        const publicId = user.profilePicture.split('/').pop().split('.')[0];
-        await cloudinary.uploader.destroy(publicId);
-      }
-
-      // Update with new profile picture URL
-      user.profilePicture = req.file.path;
-    }
+    user.profilePicture = profilePictureUrl;
 
     const updatedUser = await user.save();
     res.json({

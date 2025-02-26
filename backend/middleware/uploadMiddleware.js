@@ -1,30 +1,26 @@
 const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const path = require('path');
 
-// Configure Cloudinary
-cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET
-});
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
 
-// Configure multer storage using cloudinary
-const storage = new CloudinaryStorage({
-    cloudinary: cloudinary,
-    params: {
-        folder: 'profile-pictures', // This is the folder name in cloudinary
-        allowed_formats: ['jpg', 'jpeg', 'png'], // Allowed image formats
-        transformation: [{ width: 500, height: 500, crop: 'limit' }] // Optional: resize images
+// File filter to accept only images
+const fileFilter = (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png'];
+    if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Invalid file type. Only JPEG, JPG and PNG files are allowed.'), false);
     }
-});
+};
 
-// Create multer upload middleware
+// Configure multer
 const upload = multer({
     storage: storage,
+    fileFilter: fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024 // Limit file size to 5MB
-    }
+        fileSize: 5 * 1024 * 1024, // 5MB file size limit
+    },
 });
 
 module.exports = upload; 

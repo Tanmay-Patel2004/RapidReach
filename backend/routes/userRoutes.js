@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/authMiddleware');
 const upload = require('../middleware/uploadMiddleware');
+const s3 = require('../config/s3Config');
 const {
   getAllUsers,
   getUserById,
@@ -10,6 +11,30 @@ const {
 } = require('../controllers/userController');
 const { checkPermission } = require('../middleware/permissionMiddleware');
 const { PERMISSION_IDS } = require('../constants/permissions');
+
+// Test route for AWS configuration
+router.get('/test-s3', async (req, res) => {
+  try {
+    const params = {
+      Bucket: process.env.AWS_BUCKET_NAME
+    };
+
+    const result = await s3.listObjects(params).promise();
+    res.json({
+      message: 'AWS S3 Connection Successful',
+      bucketContents: result.Contents
+    });
+  } catch (error) {
+    console.error('AWS Test Error:', error);
+    res.status(500).json({
+      message: 'AWS Connection Failed',
+      error: {
+        code: error.code,
+        message: error.message
+      }
+    });
+  }
+});
 
 // All routes are protected
 router.use(protect);

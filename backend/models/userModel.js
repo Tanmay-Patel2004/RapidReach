@@ -34,7 +34,7 @@ const userSchema = new mongoose.Schema({
   },
   profilePicture: {
     type: String,
-    default: 'https://res.cloudinary.com/rapidreach/image/upload/v1/default-avatar.png' // You can change this default image URL
+    default: null
   }
 }, {
   timestamps: true
