@@ -31,6 +31,10 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Role',
     required: [true, "Role is required"]
+  },
+  profilePicture: {
+    type: String,
+    default: 'https://res.cloudinary.com/rapidreach/image/upload/v1/default-avatar.png' // You can change this default image URL
   }
 }, {
   timestamps: true

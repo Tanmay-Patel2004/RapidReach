@@ -11,11 +11,32 @@ import {
   Alert,
   Divider,
   IconButton,
+  Modal,
+  TextField,
+  Button,
+  Stack,
 } from "@mui/material";
-import { Person as PersonIcon, ArrowBack as ArrowBackIcon } from "@mui/icons-material";
+import {
+  Person as PersonIcon,
+  ArrowBack as ArrowBackIcon,
+  Edit as EditIcon,
+  Close as CloseIcon,
+} from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { selectUser } from "../store/slices/authSlice";
 import logger from "../utils/logger";
+
+const modalStyle = {
+  position: "absolute",
+  top: "50%",
+  left: "50%",
+  transform: "translate(-50%, -50%)",
+  width: { xs: "90%", sm: 500 },
+  bgcolor: "background.paper",
+  boxShadow: 24,
+  borderRadius: 2,
+  p: 4,
+};
 
 const ProfilePage = () => {
   const navigate = useNavigate();
@@ -23,6 +44,15 @@ const ProfilePage = () => {
   const [userDetails, setUserDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [openModal, setOpenModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    dateOfBirth: "",
+  });
+  const [updateLoading, setUpdateLoading] = useState(false);
+  const [updateError, setUpdateError] = useState(null);
 
   const roleMapping = {
     "67bb9c77ee11822f1295c3e7": "Driver",
@@ -30,39 +60,79 @@ const ProfilePage = () => {
     "67bb9c89ee11822f1295c3eb": "Super Admin",
   };
 
-  useEffect(() => {
-    const fetchUserDetails = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchUserDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const response = await fetch(
-          `http://localhost:3000/api/users/${currentUser._id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch user details");
+      const response = await fetch(
+        `http://localhost:3000/api/users/${currentUser._id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
         }
+      );
 
-        const data = await response.json();
-        setUserDetails(data);
-      } catch (err) {
-        setError(err.message);
-        logger.error("Error fetching user details", { error: err.message });
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error("Failed to fetch user details");
       }
-    };
 
+      const data = await response.json();
+      setUserDetails(data);
+      setEditForm({
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        dateOfBirth: data.dateOfBirth.split("T")[0],
+      });
+    } catch (err) {
+      setError(err.message);
+      logger.error("Error fetching user details", { error: err.message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     if (currentUser?._id) {
       fetchUserDetails();
     }
   }, [currentUser?._id]);
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setUpdateLoading(true);
+    setUpdateError(null);
+
+    try {
+      const response = await fetch(
+        `http://localhost:3000/api/users/${currentUser._id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+          },
+          body: JSON.stringify(editForm),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to update profile");
+      }
+
+      await fetchUserDetails(); // Refresh user details
+      setOpenModal(false);
+      logger.info("Profile updated successfully");
+    } catch (err) {
+      setUpdateError(err.message);
+      logger.error("Error updating profile", { error: err.message });
+    } finally {
+      setUpdateLoading(false);
+    }
+  };
 
   const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -113,6 +183,13 @@ const ProfilePage = () => {
           sx={{ position: "absolute", top: 16, left: 16 }}
         >
           <ArrowBackIcon />
+        </IconButton>
+
+        <IconButton
+          onClick={() => setOpenModal(true)}
+          sx={{ position: "absolute", top: 16, right: 16 }}
+        >
+          <EditIcon color="primary" />
         </IconButton>
 
         <Box sx={{ 
@@ -180,6 +257,80 @@ const ProfilePage = () => {
             </Typography>
           </Grid>
         </Grid>
+
+        {/* Edit Modal */}
+        <Modal
+          open={openModal}
+          onClose={() => setOpenModal(false)}
+          aria-labelledby="edit-profile-modal"
+        >
+          <Box sx={modalStyle}>
+            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+              <Typography variant="h6">Edit Profile</Typography>
+              <IconButton onClick={() => setOpenModal(false)} size="small">
+                <CloseIcon />
+              </IconButton>
+            </Box>
+
+            {updateError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {updateError}
+              </Alert>
+            )}
+
+            <form onSubmit={handleEditSubmit}>
+              <Stack spacing={2}>
+                <TextField
+                  fullWidth
+                  label="First Name"
+                  value={editForm.firstName}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, firstName: e.target.value })
+                  }
+                  required
+                />
+                <TextField
+                  fullWidth
+                  label="Last Name"
+                  value={editForm.lastName}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, lastName: e.target.value })
+                  }
+                  required
+                />
+                <TextField
+                  fullWidth
+                  type="email"
+                  label="Email"
+                  value={editForm.email}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, email: e.target.value })
+                  }
+                  required
+                />
+                <TextField
+                  fullWidth
+                  type="date"
+                  label="Date of Birth"
+                  value={editForm.dateOfBirth}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, dateOfBirth: e.target.value })
+                  }
+                  InputLabelProps={{ shrink: true }}
+                  required
+                />
+                <Button
+                  type="submit"
+                  variant="contained"
+                  disabled={updateLoading}
+                  sx={{ mt: 2 }}
+                >
+                  {updateLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </Stack>
+            </form>
+          </Box>
+        </Modal>
       </Paper>
     </Container>
   );

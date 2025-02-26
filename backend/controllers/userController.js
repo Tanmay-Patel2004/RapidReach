@@ -1,4 +1,5 @@
 const User = require('../models/userModel');
+const cloudinary = require('cloudinary').v2;
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -52,6 +53,18 @@ const updateUser = async (req, res) => {
     user.email = email || user.email;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
 
+    // Handle profile picture upload
+    if (req.file) {
+      // If user already has a profile picture, delete it from cloudinary
+      if (user.profilePicture && user.profilePicture !== 'https://res.cloudinary.com/rapidreach/image/upload/v1/default-avatar.png') {
+        const publicId = user.profilePicture.split('/').pop().split('.')[0];
+        await cloudinary.uploader.destroy(publicId);
+      }
+
+      // Update with new profile picture URL
+      user.profilePicture = req.file.path;
+    }
+
     const updatedUser = await user.save();
     res.json({
       _id: updatedUser._id,
@@ -59,14 +72,13 @@ const updateUser = async (req, res) => {
       lastName: updatedUser.lastName,
       email: updatedUser.email,
       dateOfBirth: updatedUser.dateOfBirth,
+      profilePicture: updatedUser.profilePicture,
     });
   } catch (error) {
     console.error('❌ Update User Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
-
-
 
 // @desc    Delete user
 // @route   DELETE /api/users/:id
