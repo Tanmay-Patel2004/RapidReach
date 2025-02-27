@@ -11,6 +11,8 @@ const productRoutes = require('./routes/productRoutes');
 const warehouseRoutes = require('./routes/warehouseRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
 
+
+
 dotenv.config();
 const app = express();
 
