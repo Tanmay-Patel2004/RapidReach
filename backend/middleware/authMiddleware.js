@@ -1,36 +1,45 @@
 const jwt = require('jsonwebtoken');
+const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const RolePermission = require('../models/rolePermissionModel');
 
-const protect = async (req, res, next) => {
-  try {
-    let token;
-    console.log('🔑 Auth Headers:', req.headers.authorization);
+const protect = asyncHandler(async (req, res, next) => {
+  let token;
 
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  console.log('Auth Header:', req.headers.authorization);
+
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      // Get token from header
+      token = req.headers.authorization.split(' ')[1];
+
+      console.log('Token being verified:', token);
+      console.log('JWT_SECRET:', process.env.JWT_SECRET ? 'Exists' : 'Missing');
+
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Decoded token:', decoded);
+
+      // Get user from the token with role populated
+      const user = await User.findById(decoded.id)
+        .select('-password')
+        .populate('role_id');
+
+      if (!user) {
+        res.status(401);
+        throw new Error('User not found');
+      }
+
+      // Check if user has a role assigned
+      if (!user.role_id) {
+        res.status(401);
+        throw new Error('User has no role assigned');
+      }
+
+      // Store user in request
+      req.user = user;
+
       try {
-        token = req.headers.authorization.split(' ')[1];
-        console.log('🔑 Extracted Token:', token);
-
-        if (!token) {
-          console.log('❌ No token found in Bearer header');
-          return res.status(401).json({ message: 'Not authorized, no token' });
-        }
-
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        console.log('✅ Decoded Token:', decoded);
-
-        const user = await User.findById(decoded.id)
-          .populate({
-            path: 'role_id',
-            select: 'name'
-          });
-
-        if (!user) {
-          console.log('❌ No user found with token ID');
-          return res.status(401).json({ message: 'User not found' });
-        }
-
         // Get permissions for the user's role
         const rolePermissions = await RolePermission.find({ roleId: user.role_id._id })
           .populate({
@@ -39,22 +48,58 @@ const protect = async (req, res, next) => {
           });
 
         // Add permissions to user object
-        user.permissions = rolePermissions.map(rp => rp.permissionId);
-
-        req.user = user;
-        next();
-      } catch (error) {
-        console.error('❌ Token verification error:', error);
-        return res.status(401).json({ message: 'Not authorized, token failed' });
+        req.user.permissions = rolePermissions.map(rp => rp.permissionId);
+      } catch (permError) {
+        console.error('Error fetching permissions:', permError);
+        // Don't throw error here, just log it and continue with empty permissions
+        req.user.permissions = [];
       }
-    } else {
-      console.log('❌ No Bearer token in Authorization header');
-      return res.status(401).json({ message: 'Not authorized, no token' });
+
+      console.log('User authenticated successfully:', {
+        userId: user._id,
+        role: user.role_id.name,
+        permissionsCount: req.user.permissions.length
+      });
+
+      next();
+    } catch (error) {
+      console.error('Token verification error:', error);
+      res.status(401);
+
+      if (error.name === 'JsonWebTokenError') {
+        throw new Error('Not authorized - Invalid token');
+      } else if (error.name === 'TokenExpiredError') {
+        throw new Error('Not authorized - Token expired');
+      } else {
+        throw new Error(`Not authorized - ${error.message}`);
+      }
     }
-  } catch (error) {
-    console.error('❌ Auth middleware error:', error);
-    return res.status(500).json({ message: 'Server error' });
+  } else {
+    res.status(401);
+    throw new Error('Not authorized, no token provided');
   }
+});
+
+// Middleware to check if user has required role
+const authorize = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      res.status(403);
+      throw new Error('Not authorized - User not authenticated');
+    }
+
+    if (!req.user.role_id) {
+      res.status(403);
+      throw new Error('Not authorized - No role assigned');
+    }
+
+    if (!roles.includes(req.user.role_id.name)) {
+      res.status(403);
+      throw new Error(`Not authorized - Required roles: ${roles.join(', ')}`);
+    }
+
+    next();
+  };
 };
 
-module.exports = { protect }; 
+module.exports = { protect, authorize }; 

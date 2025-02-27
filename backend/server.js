@@ -9,6 +9,7 @@ const permissionRoutes = require('./routes/permissionRoutes');
 const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
 const productRoutes = require('./routes/productRoutes');
 const warehouseRoutes = require('./routes/warehouseRoutes');
+const searchRoutes = require('./routes/searchRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
 
 
@@ -46,6 +47,7 @@ app.use('/api/permissions', permissionRoutes);
 app.use('/api/role-permissions', rolePermissionRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/warehouses', warehouseRoutes);
+app.use('/api/search', searchRoutes);
 
 // Error handler
 app.use(errorHandler);

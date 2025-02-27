@@ -21,10 +21,11 @@ const userSchema = new mongoose.Schema({
     },
     minlength: [6, 'Password must be at least 6 characters long']
   },
-  role: {
-    type: String,
-    enum: ['user', 'admin'],
-    default: 'user'
+  role_id: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Role',
+    required: true,
+    default: '67bb9c6aee11822f1295c3e3' // Default customer role ID
   },
   profilePicture: {
     type: String,

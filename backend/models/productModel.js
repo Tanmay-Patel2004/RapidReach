@@ -60,6 +60,14 @@ const productSchema = new mongoose.Schema({
   toObject: { virtuals: true }
 });
 
+// Create text index for search
+productSchema.index({ name: 'text', description: 'text' });
+
+// Create indexes for filtering and sorting
+productSchema.index({ category: 1 });
+productSchema.index({ price: 1 });
+productSchema.index({ createdAt: -1 });
+
 // Create virtual for warehouse details
 productSchema.virtual('warehouse', {
   ref: 'Warehouse',
@@ -71,7 +79,6 @@ productSchema.virtual('warehouse', {
 // Create indexes for better query performance
 productSchema.index({ name: 1 });
 productSchema.index({ sku: 1 }, { unique: true });
-productSchema.index({ category: 1 });
 productSchema.index({ warehouseCode: 1 });
 
 // Remove any existing indexes that might be causing the error

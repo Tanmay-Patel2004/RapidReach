@@ -5,6 +5,9 @@ const asyncHandler = require('express-async-handler');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Default customer role ID
+const CUSTOMER_ROLE_ID = '67bb9c6aee11822f1295c3e3';
+
 // @desc    Authenticate user with Google
 // @route   POST /api/auth/google
 // @access  Public
@@ -24,7 +27,7 @@ const googleLogin = asyncHandler(async (req, res) => {
         });
 
         const payload = ticket.getPayload();
-        console.log('Google Auth Payload:', payload); // Debug log
+        console.log('Google Auth Payload:', payload);
 
         if (!payload) {
             res.status(401);
@@ -41,7 +44,7 @@ const googleLogin = asyncHandler(async (req, res) => {
         } = payload;
 
         // Check if user exists
-        let user = await User.findOne({ googleId });
+        let user = await User.findOne({ googleId }).populate('role_id');
 
         if (!user) {
             // Check if user exists with same email
@@ -56,7 +59,7 @@ const googleLogin = asyncHandler(async (req, res) => {
                 }
                 user = await existingUser.save();
             } else {
-                // Create new user with required fields
+                // Create new user with customer role
                 const [firstNamePart, lastNamePart] = name.split(' ');
                 user = await User.create({
                     name,
@@ -67,7 +70,8 @@ const googleLogin = asyncHandler(async (req, res) => {
                     firstName: firstName || firstNamePart || 'Unknown',
                     lastName: lastName || lastNamePart || 'Unknown',
                     dateOfBirth: new Date('1900-01-01'), // Default date, user can update later
-                    phoneNumber: null, // Set to null instead of empty string
+                    role_id: CUSTOMER_ROLE_ID, // Set default customer role
+                    phoneNumber: null,
                     address: {
                         street: null,
                         unitNumber: null,
@@ -83,7 +87,7 @@ const googleLogin = asyncHandler(async (req, res) => {
         const token = jwt.sign(
             {
                 id: user._id,
-                role: user.role
+                role_id: user.role_id
             },
             process.env.JWT_SECRET,
             { expiresIn: '30d' }
@@ -93,16 +97,16 @@ const googleLogin = asyncHandler(async (req, res) => {
             _id: user._id,
             name: user.name,
             email: user.email,
-            role: user.role,
-            profilePicture: user.profilePicture,
-            isEmailVerified: user.isEmailVerified,
             firstName: user.firstName,
             lastName: user.lastName,
+            role_id: user.role_id,
+            profilePicture: user.profilePicture,
+            isEmailVerified: user.isEmailVerified,
             token
         });
 
     } catch (error) {
-        console.error('Google Auth Error:', error); // Debug log
+        console.error('Google Auth Error:', error);
         res.status(401);
         throw new Error(`Google authentication failed: ${error.message}`);
     }
