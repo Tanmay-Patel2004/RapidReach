@@ -35,6 +35,46 @@ const userSchema = new mongoose.Schema({
   profilePicture: {
     type: String,
     default: null
+  },
+  phoneNumber: {
+    type: String,
+    trim: true,
+    validate: {
+      validator: function (v) {
+        // Basic phone number validation - can be customized based on your needs
+        return /^\+?[\d\s-()]+$/.test(v);
+      },
+      message: props => `${props.value} is not a valid phone number!`
+    }
+  },
+  address: {
+    street: {
+      type: String,
+      trim: true
+    },
+    unitNumber: {
+      type: String,
+      trim: true
+    },
+    province: {
+      type: String,
+      trim: true
+    },
+    country: {
+      type: String,
+      trim: true
+    },
+    zipCode: {
+      type: String,
+      trim: true,
+      validate: {
+        validator: function (v) {
+          // Basic postal/ZIP code validation - can be customized based on your needs
+          return /^[A-Za-z0-9\s-]+$/.test(v);
+        },
+        message: props => `${props.value} is not a valid postal/ZIP code!`
+      }
+    }
   }
 }, {
   timestamps: true

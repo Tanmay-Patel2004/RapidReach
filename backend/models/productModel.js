@@ -1,18 +1,5 @@
 const mongoose = require('mongoose');
 
-const specificationSchema = new mongoose.Schema({
-  key: {
-    type: String,
-    required: true,
-    trim: true
-  },
-  value: {
-    type: String,
-    required: true,
-    trim: true
-  }
-}, { _id: false });
-
 const productSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -21,55 +8,89 @@ const productSchema = new mongoose.Schema({
   },
   description: {
     type: String,
-    required: [true, 'Description is required'],
+    required: [true, 'Product description is required'],
     trim: true
   },
   price: {
     type: Number,
-    required: [true, 'Price is required'],
-    min: 0
-  },
-  quantity: {
-    type: Number,
-    required: [true, 'Quantity is required'],
-    min: 0,
-    default: 0
-  },
-  isAvailable: {
-    type: Boolean,
-    default: true
-  },
-  code: {
-    type: String,
-    required: [true, 'Product code is required'],
-    unique: true,
-    trim: true
-  },
-  vendorId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Vendor',
-    required: [true, 'Vendor ID is required']
+    required: [true, 'Product price is required'],
+    min: [0, 'Price cannot be negative']
   },
   category: {
     type: String,
-    required: [true, 'Category is required'],
+    required: [true, 'Product category is required'],
     trim: true
   },
-  isActive: {
-    type: Boolean,
-    default: true
+  sku: {
+    type: String,
+    required: [true, 'SKU is required'],
+    unique: true,
+    trim: true
+  },
+  stockQuantity: {
+    type: Number,
+    required: [true, 'Stock quantity is required'],
+    min: [0, 'Stock quantity cannot be negative']
+  },
+  unit: {
+    type: String,
+    required: [true, 'Unit of measurement is required'],
+    trim: true
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive', 'discontinued'],
+    default: 'active'
+  },
+  warehouseCode: {
+    type: String,
+    required: [true, 'Warehouse code is required'],
+    trim: true
+  },
+  images: [{
+    type: String
+  }],
+  video: {
+    type: String,
+    default: null
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
 });
 
-// Middleware to update isAvailable based on quantity
-productSchema.pre('save', function(next) {
-  this.isAvailable = this.quantity > 0;
+// Create virtual for warehouse details
+productSchema.virtual('warehouse', {
+  ref: 'Warehouse',
+  localField: 'warehouseCode',
+  foreignField: 'warehouseCode',
+  justOne: true
+});
+
+// Create indexes for better query performance
+productSchema.index({ name: 1 });
+productSchema.index({ sku: 1 }, { unique: true });
+productSchema.index({ category: 1 });
+productSchema.index({ warehouseCode: 1 });
+
+// Remove any existing indexes that might be causing the error
+productSchema.on('index', function (err) {
+  if (err) {
+    console.error('Index Error:', err);
+  }
+});
+
+// Middleware to validate warehouse exists before saving
+productSchema.pre('save', async function (next) {
+  if (this.isModified('warehouseCode')) {
+    const Warehouse = mongoose.model('Warehouse');
+    const warehouse = await Warehouse.findOne({ warehouseCode: this.warehouseCode });
+    if (!warehouse) {
+      throw new Error('Invalid warehouse code');
+    }
+  }
   next();
 });
-
-// Create index for product code
-productSchema.index({ code: 1 }, { unique: true });
 
 module.exports = mongoose.model('Product', productSchema); 

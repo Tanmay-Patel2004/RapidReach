@@ -1,5 +1,6 @@
 // Export as CommonJS module
 const PERMISSIONS = {
+  // User Management Permissions
   READ_ALL_USERS: {
     permission_id: 1,
     name: 'READ_ALL_USERS',
@@ -39,6 +40,7 @@ const PERMISSIONS = {
 
 // Simple array of permission IDs for quick validation
 const PERMISSION_IDS = {
+  // User Management
   READ_ALL_USERS: 1,
   EDIT_SINGLE_USER: 2,
   ADD_SINGLE_USER: 3,
@@ -53,14 +55,14 @@ const hasPermission = (userPermissions, requiredPermissionId) => {
 
 // Helper function to check if a user has all required permissions
 const hasAllPermissions = (userPermissions, requiredPermissionIds) => {
-  return requiredPermissionIds.every(permissionId => 
+  return requiredPermissionIds.every(permissionId =>
     userPermissions.some(permission => permission.id === permissionId)
   );
 };
 
 // Helper function to check if a user has any of the required permissions
 const hasAnyPermission = (userPermissions, requiredPermissionIds) => {
-  return requiredPermissionIds.some(permissionId => 
+  return requiredPermissionIds.some(permissionId =>
     userPermissions.some(permission => permission.id === permissionId)
   );
 };

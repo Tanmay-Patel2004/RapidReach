@@ -1,10 +1,10 @@
 const s3 = require('../config/s3Config');
 const { v4: uuidv4 } = require('uuid');
 
-const uploadToS3 = async (file) => {
+const uploadToS3 = async (file, folder = 'general') => {
     const params = {
         Bucket: process.env.AWS_BUCKET_NAME,
-        Key: `profile-pictures/${uuidv4()}-${file.originalname}`,
+        Key: `${folder}/${uuidv4()}-${file.originalname}`,
         Body: file.buffer,
         ContentType: file.mimetype
     };

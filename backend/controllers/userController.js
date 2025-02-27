@@ -40,7 +40,14 @@ const getUserById = async (req, res) => {
 // @access  Private
 const updateUser = async (req, res) => {
   try {
-    const { firstName, lastName, email, dateOfBirth } = req.body;
+    const {
+      firstName,
+      lastName,
+      email,
+      dateOfBirth,
+      phoneNumber,
+      address
+    } = req.body;
 
     const user = await User.findById(req.params.id);
     if (!user) {
@@ -67,12 +74,38 @@ const updateUser = async (req, res) => {
       }
     }
 
-    // Update fields
+    // Update basic fields
     user.firstName = firstName || user.firstName;
     user.lastName = lastName || user.lastName;
     user.email = email || user.email;
     user.dateOfBirth = dateOfBirth || user.dateOfBirth;
     user.profilePicture = profilePictureUrl;
+
+    // Update phone number if provided
+    if (phoneNumber) {
+      user.phoneNumber = phoneNumber;
+    }
+
+    // Update address fields if provided
+    if (address) {
+      user.address = {
+        street: address.street || user.address?.street,
+        unitNumber: address.unitNumber || user.address?.unitNumber,
+        province: address.province || user.address?.province,
+        country: address.country || user.address?.country,
+        zipCode: address.zipCode || user.address?.zipCode
+      };
+    }
+
+    // Validate the updated user data
+    try {
+      await user.validate();
+    } catch (validationError) {
+      return res.status(400).json({
+        message: 'Validation Error',
+        details: validationError.message
+      });
+    }
 
     const updatedUser = await user.save();
     res.json({
@@ -82,6 +115,8 @@ const updateUser = async (req, res) => {
       email: updatedUser.email,
       dateOfBirth: updatedUser.dateOfBirth,
       profilePicture: updatedUser.profilePicture,
+      phoneNumber: updatedUser.phoneNumber,
+      address: updatedUser.address
     });
   } catch (error) {
     console.error('❌ Update User Error:', error);

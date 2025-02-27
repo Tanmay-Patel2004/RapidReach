@@ -1,38 +1,48 @@
 const Product = require('../models/productModel');
-const Vendor = require('../models/vendorModel');
-const mongoose = require('mongoose');
-
-// @desc    Create new product
-// @route   POST /api/products
-// @access  Private
-const createProduct = async (req, res) => {
-  try {
-    const { name, description, price, quantity, vendorId, category } = req.body;
-
-    const product = await Product.create({
-      name,
-      description,
-      price,
-      quantity,
-      vendorId,
-      category,
-      isAvailable: quantity > 0
-    });
-
-    res.status(201).json(product);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+const Warehouse = require('../models/warehouseModel');
+const uploadToS3 = require('../utils/s3Upload');
 
 // @desc    Get all products
 // @route   GET /api/products
 // @access  Private
 const getAllProducts = async (req, res) => {
   try {
-    const products = await Product.find({})
-      .populate('vendorId', 'name email');
-    res.json(products);
+    console.log('📝 Getting all products...');
+
+    // Build query
+    let query = {};
+
+    // Category filter
+    if (req.query.category) {
+      query.category = req.query.category;
+    }
+
+    // Status filter (optional)
+    if (req.query.status) {
+      query.status = req.query.status;
+    }
+
+    // Get all unique categories
+    const categories = await Product.distinct('category');
+
+    // Execute query with optional sorting
+    let products;
+    if (req.query.sort === 'category') {
+      products = await Product.find(query)
+        .populate('warehouse')
+        .sort({ category: 1 }); // 1 for ascending, -1 for descending
+    } else {
+      products = await Product.find(query)
+        .populate('warehouse');
+    }
+
+    console.log(`✅ Found ${products.length} products`);
+
+    res.json({
+      categories, // Include available categories in response
+      count: products.length,
+      products
+    });
   } catch (error) {
     console.error('❌ Get All Products Error:', error);
     res.status(500).json({ message: error.message });
@@ -44,9 +54,7 @@ const getAllProducts = async (req, res) => {
 // @access  Private
 const getProductById = async (req, res) => {
   try {
-    const product = await Product.findById(req.params.id)
-      .populate('vendorId', 'name email address phoneNumber');
-    
+    const product = await Product.findById(req.params.id).populate('warehouse');
     if (!product) {
       return res.status(404).json({ message: '❌ Product not found' });
     }
@@ -57,29 +65,209 @@ const getProductById = async (req, res) => {
   }
 };
 
+// @desc    Create new product
+// @route   POST /api/products
+// @access  Private
+const createProduct = async (req, res) => {
+  try {
+    const {
+      name,
+      description,
+      price,
+      category,
+      sku,
+      stockQuantity,
+      unit,
+      status,
+      warehouseCode
+    } = req.body;
+
+    // Check if product with this SKU already exists
+    const productExists = await Product.findOne({ sku });
+    if (productExists) {
+      return res.status(400).json({ message: '❌ Product with this SKU already exists' });
+    }
+
+    // Verify warehouse exists
+    const warehouse = await Warehouse.findOne({ warehouseCode });
+    if (!warehouse) {
+      return res.status(400).json({ message: '❌ Invalid warehouse code' });
+    }
+
+    // Handle multiple image uploads
+    let imageUrls = [];
+    if (req.files && req.files.images) {
+      try {
+        console.log(`📁 Received ${req.files.images.length} images`);
+        const uploadPromises = req.files.images.map(file => uploadToS3(file, 'products/images'));
+        imageUrls = await Promise.all(uploadPromises);
+        console.log('✅ Successfully uploaded images:', imageUrls);
+      } catch (uploadError) {
+        console.error('❌ Image Upload Error:', uploadError);
+        return res.status(400).json({
+          message: 'Error uploading product images',
+          details: uploadError.message
+        });
+      }
+    }
+
+    // Handle video upload
+    let videoUrl = null;
+    if (req.files && req.files.video && req.files.video.length > 0) {
+      try {
+        console.log('📹 Received video file');
+        videoUrl = await uploadToS3(req.files.video[0], 'products/videos');
+        console.log('✅ Successfully uploaded video:', videoUrl);
+      } catch (uploadError) {
+        console.error('❌ Video Upload Error:', uploadError);
+        return res.status(400).json({
+          message: 'Error uploading product video',
+          details: uploadError.message
+        });
+      }
+    }
+
+    const product = await Product.create({
+      name,
+      description,
+      price,
+      category,
+      sku,
+      stockQuantity,
+      unit,
+      status,
+      warehouseCode,
+      images: imageUrls,
+      video: videoUrl
+    });
+
+    const populatedProduct = await Product.findById(product._id).populate('warehouse');
+    res.status(201).json(populatedProduct);
+  } catch (error) {
+    console.error('❌ Create Product Error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Update product
 // @route   PUT /api/products/:id
 // @access  Private
 const updateProduct = async (req, res) => {
   try {
-    const { name, description, price, quantity, category, isActive } = req.body;
-    
+    const {
+      name,
+      description,
+      price,
+      category,
+      sku,
+      stockQuantity,
+      unit,
+      status,
+      warehouseCode
+    } = req.body;
+
     const product = await Product.findById(req.params.id);
     if (!product) {
       return res.status(404).json({ message: '❌ Product not found' });
     }
 
+    // If SKU is being changed, check if new SKU already exists
+    if (sku && sku !== product.sku) {
+      const skuExists = await Product.findOne({ sku });
+      if (skuExists) {
+        return res.status(400).json({ message: '❌ Product with this SKU already exists' });
+      }
+    }
+
+    // If warehouse code is being changed, verify new warehouse exists
+    if (warehouseCode && warehouseCode !== product.warehouseCode) {
+      const warehouse = await Warehouse.findOne({ warehouseCode });
+      if (!warehouse) {
+        return res.status(400).json({ message: '❌ Invalid warehouse code' });
+      }
+    }
+
+    // Handle multiple image uploads for update
+    let imageUrls = product.images;
+    if (req.files && req.files.images) {
+      try {
+        console.log(`📁 Received ${req.files.images.length} new images`);
+        const uploadPromises = req.files.images.map(file => uploadToS3(file, 'products/images'));
+        const newImageUrls = await Promise.all(uploadPromises);
+        imageUrls = [...imageUrls, ...newImageUrls];
+        console.log('✅ Successfully uploaded new images:', newImageUrls);
+      } catch (uploadError) {
+        console.error('❌ Image Upload Error:', uploadError);
+        return res.status(400).json({
+          message: 'Error uploading product images',
+          details: uploadError.message
+        });
+      }
+    }
+
+    // Handle video upload for update
+    let videoUrl = product.video;
+    if (req.files && req.files.video && req.files.video.length > 0) {
+      try {
+        console.log('📹 Received new video file');
+        videoUrl = await uploadToS3(req.files.video[0], 'products/videos');
+        console.log('✅ Successfully uploaded new video:', videoUrl);
+      } catch (uploadError) {
+        console.error('❌ Video Upload Error:', uploadError);
+        return res.status(400).json({
+          message: 'Error uploading product video',
+          details: uploadError.message
+        });
+      }
+    }
+
+    // Update fields
     product.name = name || product.name;
     product.description = description || product.description;
     product.price = price || product.price;
-    product.quantity = quantity !== undefined ? quantity : product.quantity;
     product.category = category || product.category;
-    product.isActive = isActive !== undefined ? isActive : product.isActive;
-    // isAvailable will be automatically updated by the pre-save middleware
+    product.sku = sku || product.sku;
+    product.stockQuantity = stockQuantity || product.stockQuantity;
+    product.unit = unit || product.unit;
+    product.status = status || product.status;
+    product.warehouseCode = warehouseCode || product.warehouseCode;
+    product.images = imageUrls;
+    product.video = videoUrl;
 
     const updatedProduct = await product.save();
-    res.json(updatedProduct);
+    const populatedProduct = await Product.findById(updatedProduct._id).populate('warehouse');
+    res.json(populatedProduct);
   } catch (error) {
+    console.error('❌ Update Product Error:', error);
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Delete product image
+// @route   DELETE /api/products/:id/images/:imageUrl
+// @access  Private
+const deleteProductImage = async (req, res) => {
+  try {
+    const { id, imageUrl } = req.params;
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: '❌ Product not found' });
+    }
+
+    // Remove the image URL from the images array
+    product.images = product.images.filter(img => img !== decodeURIComponent(imageUrl));
+    await product.save();
+
+    res.json({ message: '✅ Image removed successfully', product });
+  } catch (error) {
+    console.error('❌ Delete Image Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -102,25 +290,72 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-// @desc    Get products by vendor
-// @route   GET /api/products/vendor/:vendorId
+// @desc    Get products by warehouse
+// @route   GET /api/products/warehouse/:warehouseCode
 // @access  Private
-const getProductsByVendor = async (req, res) => {
+const getProductsByWarehouse = async (req, res) => {
   try {
-    const products = await Product.find({ vendorId: req.params.vendorId })
-      .populate('vendorId', 'name email');
+    const { warehouseCode } = req.params;
+    const products = await Product.find({ warehouseCode }).populate('warehouse');
     res.json(products);
   } catch (error) {
-    console.error('❌ Get Vendor Products Error:', error);
+    console.error('❌ Get Products by Warehouse Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Delete product video
+// @route   DELETE /api/products/:id/video
+// @access  Private
+const deleteProductVideo = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: '❌ Product not found' });
+    }
+
+    // Remove the video URL
+    product.video = null;
+    await product.save();
+
+    res.json({ message: '✅ Video removed successfully', product });
+  } catch (error) {
+    console.error('❌ Delete Video Error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Get products by category
+// @route   GET /api/products/category/:category
+// @access  Private
+const getProductsByCategory = async (req, res) => {
+  try {
+    const { category } = req.params;
+    const products = await Product.find({ category })
+      .populate('warehouse')
+      .sort({ name: 1 }); // Sort by name within category
+
+    res.json({
+      category,
+      count: products.length,
+      products
+    });
+  } catch (error) {
+    console.error('❌ Get Products by Category Error:', error);
     res.status(500).json({ message: error.message });
   }
 };
 
 module.exports = {
-  createProduct,
   getAllProducts,
   getProductById,
+  createProduct,
   updateProduct,
   deleteProduct,
-  getProductsByVendor
+  deleteProductImage,
+  deleteProductVideo,
+  getProductsByWarehouse,
+  getProductsByCategory
 }; 

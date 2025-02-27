@@ -1,30 +1,47 @@
 const express = require('express');
 const router = express.Router();
+const { protect } = require('../middleware/authMiddleware');
+const { uploadProductFiles } = require('../middleware/uploadMiddleware');
 const {
-  createProduct,
   getAllProducts,
   getProductById,
+  createProduct,
   updateProduct,
   deleteProduct,
-  getProductsByVendor
+  deleteProductImage,
+  deleteProductVideo,
+  getProductsByWarehouse,
+  getProductsByCategory
 } = require('../controllers/productController');
-const { protect } = require('../middleware/authMiddleware');
-const { checkPermission } = require('../middleware/permissionMiddleware');
-const { PERMISSION_IDS } = require('../constants/permissions');
 
 // All routes are protected
 router.use(protect);
 
+// /api/products
 router.route('/')
-  .post(checkPermission(PERMISSION_IDS.ADD_SINGLE_PRODUCT), createProduct)
-  .get(checkPermission(PERMISSION_IDS.READ_ALL_PRODUCTS), getAllProducts);
+  .get(getAllProducts)
+  .post(uploadProductFiles, createProduct);
 
+// /api/products/category/:category
+router.route('/category/:category')
+  .get(getProductsByCategory);
+
+// /api/products/warehouse/:warehouseCode
+router.route('/warehouse/:warehouseCode')
+  .get(getProductsByWarehouse);
+
+// /api/products/:id
 router.route('/:id')
-  .get(checkPermission(PERMISSION_IDS.FETCH_SINGLE_PRODUCT), getProductById)
-  .put(checkPermission(PERMISSION_IDS.EDIT_SINGLE_PRODUCT), updateProduct)
-  .delete(checkPermission(PERMISSION_IDS.DELETE_SINGLE_PRODUCT), deleteProduct);
+  .get(getProductById)
+  .put(uploadProductFiles, updateProduct)
+  .delete(deleteProduct);
 
-router.route('/vendor/:vendorId')
-  .get(checkPermission(PERMISSION_IDS.READ_ALL_PRODUCTS), getProductsByVendor);
+// /api/products/:id/images/:imageUrl
+router.route('/:id/images/:imageUrl')
+  .delete(deleteProductImage);
+
+// /api/products/:id/video
+router.route('/:id/video')
+  .delete(deleteProductVideo);
 
 module.exports = router; 

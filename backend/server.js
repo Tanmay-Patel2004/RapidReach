@@ -7,8 +7,9 @@ const userRoutes = require('./routes/userRoutes');
 const roleRoutes = require('./routes/roleRoutes');
 const permissionRoutes = require('./routes/permissionRoutes');
 const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
-const vendorRoutes = require('./routes/vendorRoutes');
 const productRoutes = require('./routes/productRoutes');
+const warehouseRoutes = require('./routes/warehouseRoutes');
+const { errorHandler } = require('./middleware/errorMiddleware');
 
 dotenv.config();
 const app = express();
@@ -23,6 +24,7 @@ app.use(cors({
 
 // Body parser
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // Request logger
 app.use((req, res, next) => {
@@ -40,16 +42,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/roles', roleRoutes);
 app.use('/api/permissions', permissionRoutes);
 app.use('/api/role-permissions', rolePermissionRoutes);
-app.use('/api/vendors', vendorRoutes);
 app.use('/api/products', productRoutes);
+app.use('/api/warehouses', warehouseRoutes);
 
 // Error handler
-app.use((err, req, res, next) => {
-  console.error('❌ Server Error:', err);
-  res.status(500).json({ message: 'Internal server error' });
-});
+app.use(errorHandler);
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 
 // Start server
 const server = app.listen(PORT, () => {
@@ -62,3 +61,5 @@ const server = app.listen(PORT, () => {
 server.on('error', (error) => {
   console.error('Server error:', error);
 });
+
+module.exports = app;
