@@ -1,8 +1,9 @@
 const mongoose = require('mongoose');
+require('dotenv').config();
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect('mongodb://iiprofit_user:Waterloo%23Conestoga2025@185.239.208.33:27017/rapidReachDB?authSource=rapidReachDB');
+    const conn = await mongoose.connect(`mongodb://${process.env.MONGODB_USER}:${process.env.MONGODB_PASSWORD}@${process.env.MONGODB_HOST}:27017/rapidReachDB?authSource=rapidReachDB`);
     console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
 
     // Test the connection
