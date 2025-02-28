@@ -77,9 +77,9 @@ productSchema.virtual('warehouse', {
 });
 
 // Create indexes for better query performance
-productSchema.index({ name: 1 });
-productSchema.index({ sku: 1 }, { unique: true });
-productSchema.index({ warehouseCode: 1 });
+// productSchema.index({ name: 1 });
+// productSchema.index({ sku: 1 }, { unique: true });
+// productSchema.index({ warehouseCode: 1 });
 
 // Remove any existing indexes that might be causing the error
 productSchema.on('index', function (err) {

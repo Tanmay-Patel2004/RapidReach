@@ -41,6 +41,6 @@ const warehouseSchema = new mongoose.Schema({
 });
 
 // Create a compound index for better querying
-warehouseSchema.index({ warehouseCode: 1 });
+// warehouseSchema.index({ warehouseCode: 1 });
 
 module.exports = mongoose.model('Warehouse', warehouseSchema); 
