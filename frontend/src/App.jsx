@@ -15,6 +15,7 @@ import {
   selectIsAuthenticated,
   selectUserRole,
 } from "./store/slices/authSlice";
+import SectionPage from './components/common/SectionPage';
 
 function App() {
   const dispatch = useDispatch();
@@ -75,6 +76,7 @@ function App() {
           p: 3,
           width: { sm: `calc(100% - 250px)` },
           ml: { sm: '250px' },
+          backgroundColor: '#f5f5f5', // Light gray background
         }}
       >
         <Toolbar /> {/* Add spacing for the AppBar */}
@@ -88,6 +90,47 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          {/* New Routes for sections */}
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <SectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/roles"
+            element={
+              <ProtectedRoute>
+                <SectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/permissions"
+            element={
+              <ProtectedRoute>
+                <SectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/permission-relations"
+            element={
+              <ProtectedRoute>
+                <SectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/warehouse"
+            element={
+              <ProtectedRoute>
+                <SectionPage />
               </ProtectedRoute>
             }
           />
