@@ -1,7 +1,9 @@
-import { use, useEffect, useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
+import { Box, Toolbar } from '@mui/material';
 import logger from "./utils/logger";
+import Navbar from "./components/Navigation/Navbar";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
@@ -18,20 +20,18 @@ function App() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const userRole = useSelector(selectUserRole);
-  // Run only once when component mounts
+
   useEffect(() => {
     dispatch(restoreAuthState());
     logger.info("Auth state restored from localStorage");
-  }, []); // Empty dependency array
+  }, []);
 
-  // Memoize the DashboardComponent to prevent unnecessary re-renders
   const DashboardComponent = useMemo(() => {
     if (!userRole) {
       logger.warn("No user role found");
       return null;
     }
 
-    // Get the role name from the role object
     const roleName = userRole.name;
     logger.info(`Rendering dashboard for role: ${roleName}`);
 
@@ -46,9 +46,8 @@ function App() {
         logger.warn(`Unknown role: ${roleName}`);
         return <Navigate to="/" replace />;
     }
-  }, [userRole]); // Only re-run when userRole changes
+  }, [userRole]);
 
-  // Protected Route wrapper
   const ProtectedRoute = ({ children }) => {
     if (!isAuthenticated) {
       return <Navigate to="/" replace />;
@@ -56,10 +55,30 @@ function App() {
     return children;
   };
 
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    );
+  }
+
   return (
-    <Routes>
-      {isAuthenticated ? (
-        <>
+    <Box sx={{ display: 'flex' }}>
+      <Navbar />
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          width: { sm: `calc(100% - 250px)` },
+          ml: { sm: '250px' },
+        }}
+      >
+        <Toolbar /> {/* Add spacing for the AppBar */}
+        <Routes>
           <Route
             path="/dashboard"
             element={<ProtectedRoute>{DashboardComponent}</ProtectedRoute>}
@@ -74,15 +93,9 @@ function App() {
           />
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </>
-      ) : (
-        <>
-          <Route path="/" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </>
-      )}
-    </Routes>
+        </Routes>
+      </Box>
+    </Box>
   );
 }
 

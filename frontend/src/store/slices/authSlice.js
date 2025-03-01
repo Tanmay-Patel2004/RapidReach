@@ -58,16 +58,21 @@ const authSlice = createSlice({
       localStorage.removeItem('permissions');
     },
     logout: (state) => {
+      // Clear all auth-related state
       state.user = null;
       state.token = null;
       state.permissions = [];
       state.isAuthenticated = false;
       state.error = null;
+      state.loading = false;
       
-      // Clear localStorage on logout
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('permissions');
+      // Clear localStorage
+      localStorage.clear(); // Clear all storage instead of just auth items
+      
+      // You could also clear specific items if preferred:
+      // localStorage.removeItem('authToken');
+      // localStorage.removeItem('user');
+      // localStorage.removeItem('permissions');
     },
     restoreAuthState: (state) => {
       const token = localStorage.getItem('authToken');
