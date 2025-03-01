@@ -2,6 +2,8 @@ const RolePermission = require('../models/rolePermissionModel');
 const Role = require('../models/roleModel');
 const Permission = require('../models/permissionModel');
 const mongoose = require('mongoose');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Assign permission to role
 // @route   POST /api/role-permissions
@@ -19,7 +21,8 @@ const assignPermissionToRole = async (req, res) => {
     // Verify IDs are valid MongoDB ObjectIds
     if (!mongoose.Types.ObjectId.isValid(roleId) || !mongoose.Types.ObjectId.isValid(permissionId)) {
       console.log('❌ Invalid ObjectId format');
-      return res.status(400).json({ message: 'Invalid ID format' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Invalid ID format', null);
+      return res.status(code).json({ code, message, data });
     }
 
     console.log(roleId);
@@ -41,18 +44,21 @@ const assignPermissionToRole = async (req, res) => {
     });
 
     if (!role) {
-      return res.status(404).json({ message: '❌ Role not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Role not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     if (!permission) {
-      return res.status(404).json({ message: '❌ Permission not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Permission not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     // Check if assignment already exists
     const existingAssignment = await RolePermission.findOne({ roleId, permissionId });
     console.log('🔍 Existing assignment:', existingAssignment);
     if (existingAssignment) {
-      return res.status(400).json({ message: '❌ Permission already assigned to this role' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Permission already assigned to this role', null);
+      return res.status(code).json({ code, message, data });
     }
 
     const rolePermission = await RolePermission.create({
@@ -66,10 +72,12 @@ const assignPermissionToRole = async (req, res) => {
       .populate('roleId', 'name description')
       .populate('permissionId', 'name title description');
 
-    res.status(201).json(populatedRolePermission);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'Permission assigned to role successfully', populatedRolePermission);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Assign Permission Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -81,10 +89,12 @@ const getAllRolePermissions = async (req, res) => {
     const rolePermissions = await RolePermission.find({})
       .populate('roleId', 'name description')
       .populate('permissionId', 'name title description');
-    res.json(rolePermissions);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Role permissions retrieved successfully', rolePermissions);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get All Role Permissions Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -95,10 +105,12 @@ const getPermissionsByRoleId = async (req, res) => {
   try {
     const rolePermissions = await RolePermission.find({ roleId: req.params.roleId })
       .populate('permissionId', 'name title description sectionName');
-    res.json(rolePermissions);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Role permissions retrieved successfully', rolePermissions);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get Role Permissions Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -109,10 +121,12 @@ const getRolesByPermissionId = async (req, res) => {
   try {
     const rolePermissions = await RolePermission.find({ permissionId: req.params.permissionId })
       .populate('roleId', 'name description');
-    res.json(rolePermissions);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Permission roles retrieved successfully', rolePermissions);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get Permission Roles Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -125,13 +139,16 @@ const removePermissionFromRole = async (req, res) => {
 
     const rolePermission = await RolePermission.findOneAndDelete({ roleId, permissionId });
     if (!rolePermission) {
-      return res.status(404).json({ message: '❌ Role-Permission assignment not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Role-Permission assignment not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
-    res.json({ message: '✅ Permission removed from role successfully' });
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Permission removed from role successfully', null);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Remove Permission Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 

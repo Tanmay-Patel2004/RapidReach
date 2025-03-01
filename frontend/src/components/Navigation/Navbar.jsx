@@ -34,12 +34,13 @@ import {
   Store,
   Logout as LogoutIcon,
 } from '@mui/icons-material';
-import { selectUser, logout } from '../../store/slices/authSlice';
+import {logout , selectRoleName , selectUser } from '../../store/slices/authSlice';
 import logger from '../../utils/logger';
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const roleName = useSelector(selectRoleName);
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
   const [anchorElUser, setAnchorElUser] = useState(null);
@@ -47,9 +48,10 @@ const Navbar = () => {
 
   // Menu items based on role
   const getMenuItems = () => {
-    const roleName = user?.role_id?.name?.toLowerCase();
-    
-    switch (roleName) {
+    console.log(user);
+    console.log(roleName);
+   
+    switch (roleName.toLowerCase()) {
       case 'super admin':
         return [
           { title: 'Users', path: '/users', icon: <People /> },

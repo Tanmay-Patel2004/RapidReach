@@ -52,25 +52,25 @@ const LoginPage = () => {
         body: JSON.stringify(formData),
       });
 
-      const data = await response.json();
+      const result = await response.json();
 
-      if (response.ok) {
-        dispatch(loginSuccess(data));
+      if (result.code === 200) {
+        dispatch(loginSuccess(result.data));
         
-        setToastMessage(`Welcome back, ${data.name}!`);
+        setToastMessage(result.message || `Welcome back, ${result.data.name}!`);
         setToastSeverity("success");
         setShowToast(true);
 
         logger.info("Login successful", {
-          userId: data._id,
-          email: data.email,
-          role: data.role_id?.name || 'customer',
-          permissionsCount: data.permissions?.length || 0,
+          userId: result.data._id,
+          email: result.data.email,
+          role: result.data.role_id?.name || 'customer',
+          permissionsCount: result.data.permissions?.length || 0,
         });
 
         navigate("/dashboard");
       } else {
-        throw new Error(data.message || "Login failed");
+        throw new Error(result.message || "Login failed");
       }
     } catch (error) {
       dispatch(loginFailure(error.message));

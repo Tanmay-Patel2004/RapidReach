@@ -1,4 +1,6 @@
 const Role = require('../models/roleModel');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Create new role
 // @route   POST /api/roles
@@ -10,7 +12,8 @@ const createRole = async (req, res) => {
     // Check if role already exists
     const roleExists = await Role.findOne({ name });
     if (roleExists) {
-      return res.status(400).json({ message: '❌ Role already exists' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Role already exists', null);
+      return res.status(code).json({ code, message, data });
     }
 
     const role = await Role.create({
@@ -19,10 +22,12 @@ const createRole = async (req, res) => {
       isActive
     });
 
-    res.status(201).json(role);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'Role created successfully', role);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Create Role Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -32,10 +37,12 @@ const createRole = async (req, res) => {
 const getAllRoles = async (req, res) => {
   try {
     const roles = await Role.find({});
-    res.json(roles);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Roles retrieved successfully', roles);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get All Roles Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -46,12 +53,15 @@ const getRoleById = async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);
     if (!role) {
-      return res.status(404).json({ message: '❌ Role not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Role not found', null);
+      return res.status(code).json({ code, message, data });
     }
-    res.json(role);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Role retrieved successfully', role);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get Role Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -64,7 +74,8 @@ const updateRole = async (req, res) => {
     
     const role = await Role.findById(req.params.id);
     if (!role) {
-      return res.status(404).json({ message: '❌ Role not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Role not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     role.name = name || role.name;
@@ -72,10 +83,12 @@ const updateRole = async (req, res) => {
     role.isActive = isActive !== undefined ? isActive : role.isActive;
 
     const updatedRole = await role.save();
-    res.json(updatedRole);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Role updated successfully', updatedRole);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Update Role Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -86,14 +99,17 @@ const deleteRole = async (req, res) => {
   try {
     const role = await Role.findById(req.params.id);
     if (!role) {
-      return res.status(404).json({ message: '❌ Role not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Role not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     await role.deleteOne();
-    res.json({ message: '✅ Role removed successfully' });
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Role removed successfully', null);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Delete Role Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 

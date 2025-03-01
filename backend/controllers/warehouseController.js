@@ -1,4 +1,6 @@
 const Warehouse = require('../models/warehouseModel');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Get all warehouses
 // @route   GET /api/warehouses
@@ -8,10 +10,12 @@ const getAllWarehouses = async (req, res) => {
         console.log('📝 Getting all warehouses...');
         const warehouses = await Warehouse.find({});
         console.log(`✅ Found ${warehouses.length} warehouses`);
-        res.json(warehouses);
+        const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Warehouses retrieved successfully', warehouses);
+        return res.status(code).json({ code, message, data });
     } catch (error) {
         console.error('❌ Get All Warehouses Error:', error);
-        res.status(500).json({ message: error.message });
+        const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+        return res.status(code).json({ code, message, data });
     }
 };
 
@@ -22,12 +26,15 @@ const getWarehouseById = async (req, res) => {
     try {
         const warehouse = await Warehouse.findById(req.params.id);
         if (!warehouse) {
-            return res.status(404).json({ message: '❌ Warehouse not found' });
+            const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Warehouse not found', null);
+            return res.status(code).json({ code, message, data });
         }
-        res.json(warehouse);
+        const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Warehouse retrieved successfully', warehouse);
+        return res.status(code).json({ code, message, data });
     } catch (error) {
         console.error('❌ Get Warehouse Error:', error);
-        res.status(500).json({ message: error.message });
+        const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+        return res.status(code).json({ code, message, data });
     }
 };
 
@@ -41,7 +48,8 @@ const createWarehouse = async (req, res) => {
         // Check if warehouse with this code already exists
         const warehouseExists = await Warehouse.findOne({ warehouseCode });
         if (warehouseExists) {
-            return res.status(400).json({ message: '❌ Warehouse code already exists' });
+            const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Warehouse code already exists', null);
+            return res.status(code).json({ code, message, data });
         }
 
         const warehouse = await Warehouse.create({
@@ -49,17 +57,13 @@ const createWarehouse = async (req, res) => {
             address
         });
 
-        res.status(201).json({
-            _id: warehouse._id,
-            warehouseCode: warehouse.warehouseCode,
-            address: warehouse.address
-        });
+        const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'Warehouse created successfully', warehouse);
+        return res.status(code).json({ code, message, data });
     } catch (error) {
         console.error('❌ Create Warehouse Error:', error);
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({ message: error.message });
-        }
-        res.status(500).json({ message: error.message });
+        const statusCode = error.name === 'ValidationError' ? httpStatus.BAD_REQUEST : httpStatus.INTERNAL_SERVER_ERROR;
+        const { code, message, data } = getHandlerResponse(false, statusCode, error.message, null);
+        return res.status(code).json({ code, message, data });
     }
 };
 
@@ -72,14 +76,16 @@ const updateWarehouse = async (req, res) => {
 
         const warehouse = await Warehouse.findById(req.params.id);
         if (!warehouse) {
-            return res.status(404).json({ message: '❌ Warehouse not found' });
+            const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Warehouse not found', null);
+            return res.status(code).json({ code, message, data });
         }
 
         // If warehouse code is being changed, check if new code already exists
         if (warehouseCode && warehouseCode !== warehouse.warehouseCode) {
             const warehouseExists = await Warehouse.findOne({ warehouseCode });
             if (warehouseExists) {
-                return res.status(400).json({ message: '❌ Warehouse code already exists' });
+                const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Warehouse code already exists', null);
+                return res.status(code).json({ code, message, data });
             }
         }
 
@@ -95,13 +101,13 @@ const updateWarehouse = async (req, res) => {
         }
 
         const updatedWarehouse = await warehouse.save();
-        res.json(updatedWarehouse);
+        const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Warehouse updated successfully', updatedWarehouse);
+        return res.status(code).json({ code, message, data });
     } catch (error) {
         console.error('❌ Update Warehouse Error:', error);
-        if (error.name === 'ValidationError') {
-            return res.status(400).json({ message: error.message });
-        }
-        res.status(500).json({ message: error.message });
+        const statusCode = error.name === 'ValidationError' ? httpStatus.BAD_REQUEST : httpStatus.INTERNAL_SERVER_ERROR;
+        const { code, message, data } = getHandlerResponse(false, statusCode, error.message, null);
+        return res.status(code).json({ code, message, data });
     }
 };
 
@@ -112,14 +118,17 @@ const deleteWarehouse = async (req, res) => {
     try {
         const warehouse = await Warehouse.findById(req.params.id);
         if (!warehouse) {
-            return res.status(404).json({ message: '❌ Warehouse not found' });
+            const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Warehouse not found', null);
+            return res.status(code).json({ code, message, data });
         }
 
         await warehouse.deleteOne();
-        res.json({ message: '✅ Warehouse removed successfully' });
+        const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Warehouse removed successfully', null);
+        return res.status(code).json({ code, message, data });
     } catch (error) {
         console.error('❌ Delete Warehouse Error:', error);
-        res.status(500).json({ message: error.message });
+        const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+        return res.status(code).json({ code, message, data });
     }
 };
 

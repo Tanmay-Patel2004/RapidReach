@@ -16,6 +16,7 @@ import {
   selectUserRole,
 } from "./store/slices/authSlice";
 import SectionPage from './components/common/SectionPage';
+import { getStoredAuthState } from './middleware/authMiddleware';
 
 function App() {
   const dispatch = useDispatch();
@@ -23,9 +24,11 @@ function App() {
   const userRole = useSelector(selectUserRole);
 
   useEffect(() => {
-    dispatch(restoreAuthState());
-    logger.info("Auth state restored from localStorage");
-  }, []);
+    const storedAuthState = getStoredAuthState();
+    if (storedAuthState) {
+      dispatch(restoreAuthState(storedAuthState));
+    }
+  }, [dispatch]);
 
   const DashboardComponent = useMemo(() => {
     if (!userRole) {
@@ -33,7 +36,14 @@ function App() {
       return null;
     }
 
+    // Get role name from the role object
     const roleName = userRole.name;
+
+    if (!roleName) {
+      logger.warn("Could not determine role name", userRole);
+      return <Navigate to="/" replace />;
+    }
+
     logger.info(`Rendering dashboard for role: ${roleName}`);
 
     switch (roleName.toLowerCase()) {

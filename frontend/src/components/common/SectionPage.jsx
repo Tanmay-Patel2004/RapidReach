@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -8,8 +8,10 @@ import {
   Button,
   TextField,
   InputAdornment,
+  CircularProgress,
 } from '@mui/material';
-import { useLocation } from 'react-router-dom';
+import { DataGrid } from '@mui/x-data-grid';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   People,
   Security,
@@ -18,9 +20,17 @@ import {
   Add as AddIcon,
   Search as SearchIcon,
 } from '@mui/icons-material';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
+import { selectToken } from '../../store/slices/authSlice'; // Adjust the path based on your store structure
 
 const SectionPage = () => {
+  const token = useSelector(selectToken);
   const location = useLocation();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState([]);
+  const [error, setError] = useState(null);
 
   // Configuration object for section details
   const sectionConfig = {
@@ -66,6 +76,205 @@ const SectionPage = () => {
   const getSearchPlaceholder = () => {
     const section = location.pathname.slice(1);
     return `Search ${section.charAt(0).toUpperCase() + section.slice(1).replace(/-/g, ' ')}...`;
+  };
+
+  // Column definitions for different sections
+  const columnDefinitions = {
+    '/users': [
+      { field: 'Full Name', headerName: 'name', width: 150 },
+      { field: 'Email Address', headerName: 'email', width: 200 },
+      { field: 'Contact Number', headerName: 'phoneNumber', width: 130 },
+      { field: 'Role', headerName: 'role', width: 130 },
+      { field: 'User Type', headerName: 'user_type', width: 130 },
+    ],
+    '/permissions': [
+      { field: 'id', headerName: 'ID', width: 90 },
+      { field: 'name', headerName: 'Permission Name', width: 200 },
+      { field: 'description', headerName: 'Description', width: 300 },
+      { field: 'module', headerName: 'Module', width: 150 },
+    ],
+    '/roles': [
+      { field: 'id', headerName: 'ID', width: 90 },
+      { field: 'name', headerName: 'Role Name', width: 200 },
+      { field: 'description', headerName: 'Description', width: 300 },
+      { field: 'usersCount', headerName: 'Users', width: 130 },
+    ],
+    '/permission-relations': [
+      { field: 'id', headerName: 'ID', width: 90 },
+      { field: 'roleName', headerName: 'Role', width: 200 },
+      { field: 'permissionName', headerName: 'Permission', width: 200 },
+    ],
+    '/warehouse': [
+      { field: 'id', headerName: 'ID', width: 90 },
+      { field: 'name', headerName: 'Warehouse Name', width: 200 },
+      { field: 'location', headerName: 'Location', width: 200 },
+      { field: 'capacity', headerName: 'Capacity', width: 130 },
+      { field: 'status', headerName: 'Status', width: 130 },
+    ],
+  };
+
+  // API endpoint mapping
+  const apiEndpoints = {
+    '/users': 'http://localhost:3000/api/users',
+    '/permissions': 'http://localhost:3000/api/permissions',
+    '/roles': 'http://localhost:3000/api/roles',
+    '/permission-relations': 'http://localhost:3000/api/role-permissions',
+    '/warehouse': 'http://localhost:3000/api/warehouses',
+  };
+
+  // Create axios instance with default config
+  const axiosInstance = axios.create({
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    }
+  });
+
+  // Add axios response interceptor to handle common errors
+  axiosInstance.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            // Handle unauthorized - maybe redirect to login
+            setError('Session expired. Please login again.');
+            // You might want to dispatch a logout action here
+            break;
+          case 403:
+            setError('You do not have permission to access this resource.');
+            break;
+          case 404:
+            setError('Resource not found.');
+            break;
+          default:
+            setError(error.response.data.message || 'An error occurred while fetching data.');
+        }
+      } else if (error.request) {
+        setError('Network error. Please check your connection.');
+      } else {
+        setError('An unexpected error occurred.');
+      }
+      return Promise.reject(error);
+    }
+  );
+
+  // Update the fetchData function
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const endpoint = apiEndpoints[location.pathname];
+        if (!endpoint) {
+          throw new Error('Invalid endpoint');
+        }
+
+        // Use the configured axios instance
+        const response = await axiosInstance.get(endpoint);
+        
+        // Assuming the API returns data in { success: boolean, data: array } format
+        if (response.data.success) {
+          setData(response.data.data || []);
+        } else {
+          throw new Error(response.data.message || 'Failed to fetch data');
+        }
+      } catch (err) {
+        console.error('Error fetching data:', err);
+        // Error is now handled by the interceptor
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchData();
+    } else {
+      setError('Authentication token not found');
+    }
+  }, [location.pathname, token]);
+
+  // Add error display component
+  const ErrorDisplay = ({ message }) => (
+    <Box
+      sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        p: 3,
+        textAlign: 'center',
+      }}
+    >
+      <Typography variant="h6" color="error" gutterBottom>
+        Error
+      </Typography>
+      <Typography variant="body1" color="text.secondary">
+        {message}
+      </Typography>
+      {message.includes('login') && (
+        <Button
+          variant="contained"
+          color="primary"
+          sx={{ mt: 2 }}
+          onClick={() => navigate('/')}
+        >
+          Go to Login
+        </Button>
+      )}
+    </Box>
+  );
+
+  // Render content based on loading/error state
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+          <CircularProgress />
+        </Box>
+      );
+    }
+
+    if (error) {
+      return <ErrorDisplay message={error} />;
+    }
+
+    if (!data.length) {
+      return (
+        <Box sx={{ textAlign: 'center', p: 3 }}>
+          <Typography variant="body1" color="text.secondary">
+            No data available
+          </Typography>
+        </Box>
+      );
+    }
+
+    return (
+      <DataGrid
+        rows={data}
+        columns={columnDefinitions[location.pathname] || []}
+        pageSize={10}
+        rowsPerPageOptions={[10, 25, 50]}
+        checkboxSelection
+        disableSelectionOnClick
+        autoHeight
+        sx={{
+          '& .MuiDataGrid-root': {
+            border: 'none',
+          },
+          '& .MuiDataGrid-cell': {
+            borderBottom: '1px solid #f0f0f0',
+          },
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: '#f5f5f5',
+            borderBottom: 'none',
+          },
+          '& .MuiDataGrid-virtualScroller': {
+            backgroundColor: '#fff',
+          },
+        }}
+      />
+    );
   };
 
   return (
@@ -238,7 +447,7 @@ const SectionPage = () => {
 
       {/* Content Area */}
       <Box sx={{ 
-        p: { xs: 2, sm: 3, md: 4 }, // Responsive padding
+        p: { xs: 2, sm: 3, md: 4 },
         width: '100%',
       }}>
         <Paper 
@@ -246,14 +455,9 @@ const SectionPage = () => {
             width: '100%',
             p: { xs: 2, sm: 3 },
             minHeight: 'calc(100vh - 350px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
           }}
         >
-          <Typography variant="body1" color="textSecondary">
-            Content area for {currentSection.title}
-          </Typography>
+          {renderContent()}
         </Paper>
       </Box>
     </Box>
