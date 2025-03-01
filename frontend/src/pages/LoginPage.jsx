@@ -56,16 +56,16 @@ const LoginPage = () => {
 
       if (response.ok) {
         dispatch(loginSuccess(data));
-
-        setToastMessage(`Welcome back, ${data.firstName}!`);
+        
+        setToastMessage(`Welcome back, ${data.name}!`);
         setToastSeverity("success");
         setShowToast(true);
 
         logger.info("Login successful", {
           userId: data._id,
           email: data.email,
-          role: data.role.name,
-          permissionsCount: data.permissions.length,
+          role: data.role_id?.name || 'customer',
+          permissionsCount: data.permissions?.length || 0,
         });
 
         navigate("/dashboard");

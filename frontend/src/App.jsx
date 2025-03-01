@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { use, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
 import logger from "./utils/logger";
@@ -18,7 +18,6 @@ function App() {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const userRole = useSelector(selectUserRole);
-
   // Run only once when component mounts
   useEffect(() => {
     dispatch(restoreAuthState());
@@ -32,17 +31,19 @@ function App() {
       return null;
     }
 
-    logger.info(`Rendering dashboard for role: ${userRole}`);
+    // Get the role name from the role object
+    const roleName = userRole.name;
+    logger.info(`Rendering dashboard for role: ${roleName}`);
 
-    switch (userRole.toLowerCase()) {
-      case "admin":
+    switch (roleName.toLowerCase()) {
+      case "super admin":
         return <AdminDashboard />;
       case "customer":
         return <CustomerDashboard />;
       case "driver":
         return <DriverDashboard />;
       default:
-        logger.warn(`Unknown role: ${userRole}`);
+        logger.warn(`Unknown role: ${roleName}`);
         return <Navigate to="/" replace />;
     }
   }, [userRole]); // Only re-run when userRole changes
