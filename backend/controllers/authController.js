@@ -130,9 +130,21 @@ const login = asyncHandler(async (req, res) => {
   // Verify password
   if (await user.matchPassword(password)) {
     const token = generateToken(user._id);
+
+    // Fetch permissions for the user's role
+    const rolePermissions = await RolePermission.find({ roleId: user.role_id._id })
+      .populate({
+        path: 'permissionId',
+        select: 'permission_id name title description sectionName'
+      });
+
+    // Map permissions to a more readable format
+    const permissions = rolePermissions.map(rp => rp.permissionId);
+
     console.log('✅ Login successful for user:', {
       userId: user._id,
-      role: user.role_id
+      role: user.role_id,
+      permissionsCount: permissions.length
     });
 
     res.json({
@@ -142,6 +154,7 @@ const login = asyncHandler(async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       role_id: user.role_id,
+      permissions: permissions,
       token
     });
   } else {
