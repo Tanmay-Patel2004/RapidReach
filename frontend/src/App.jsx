@@ -67,19 +67,21 @@ function App() {
   }
 
   return (
-    <Box sx={{ display: 'flex' }}>
+    <Box sx={{ display: 'block' }}>
       <Navbar />
       <Box
         component="main"
         sx={{
           flexGrow: 1,
-          p: 3,
-          width: { sm: `calc(100% - 250px)` },
+          width: '100%',
           ml: { sm: '250px' },
-          backgroundColor: '#f5f5f5', // Light gray background
+          backgroundColor: '#f5f5f5',
+          minHeight: '100vh',
+          p: 0,
+          overflowX: 'hidden',
         }}
       >
-        <Toolbar /> {/* Add spacing for the AppBar */}
+        <Toolbar />
         <Routes>
           <Route
             path="/dashboard"
@@ -93,7 +95,6 @@ function App() {
               </ProtectedRoute>
             }
           />
-          {/* New Routes for sections */}
           <Route
             path="/users"
             element={
