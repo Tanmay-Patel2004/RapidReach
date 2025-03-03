@@ -103,7 +103,7 @@ const register = asyncHandler(async (req, res) => {
       return res.status(code).json({ code, data, message });
     }
   } catch (error) {
-   
+
     const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, error.message || 'Invalid user data', error);
     return res.status(code).json({ code, data, message });
   }

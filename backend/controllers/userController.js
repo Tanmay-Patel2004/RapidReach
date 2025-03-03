@@ -11,7 +11,9 @@ const getAllUsers = async (req, res) => {
     console.log('👤 Request user:', req.user);
     console.log('📝 Getting all users...');
 
-    const users = await User.find({}).select('-password');
+    const users = await User.find({})
+      .select('-password')
+      .populate('role_id', '_id name description isActive');
     console.log(`✅ Found ${users.length} users`);
 
     const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Users retrieved successfully', users);
@@ -28,7 +30,9 @@ const getAllUsers = async (req, res) => {
 // @access  Private
 const getUserById = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).select('-password');
+    const user = await User.findById(req.params.id)
+      .select('-password')
+      .populate('role_id', '_id name description isActive');
     if (!user) {
       const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'User not found', null);
       return res.status(code).json({ code, message, data });
@@ -89,7 +93,7 @@ const updateUser = async (req, res) => {
 
     // Create an update object with only the fields that are provided
     const updateFields = {};
-    
+
     if (name !== undefined) updateFields.name = name;
     if (email !== undefined) updateFields.email = email;
     if (dateOfBirth !== undefined) updateFields.dateOfBirth = dateOfBirth;
