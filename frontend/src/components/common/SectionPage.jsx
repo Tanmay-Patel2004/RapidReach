@@ -22,10 +22,12 @@ import {
 } from '@mui/icons-material';
 import axios from 'axios';
 import { useSelector } from 'react-redux';
-import { selectToken } from '../../store/slices/authSlice'; // Adjust the path based on your store structure
+import { selectToken, selectUserPermissions } from '../../store/slices/authSlice';
+import logger from '../../utils/logger';
 
 const SectionPage = () => {
   const token = useSelector(selectToken);
+  const userPermissions = useSelector(selectUserPermissions);
   const location = useLocation();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -81,83 +83,162 @@ const SectionPage = () => {
   // Column definitions for different sections
   const columnDefinitions = {
     '/users': [
-      { field: 'Full Name', headerName: 'name', width: 150 },
-      { field: 'Email Address', headerName: 'email', width: 200 },
-      { field: 'Contact Number', headerName: 'phoneNumber', width: 130 },
-      { field: 'Role', headerName: 'role', width: 130 },
-      { field: 'User Type', headerName: 'user_type', width: 130 },
+      { 
+        field: 'id', 
+        headerName: 'ID', 
+        width: 150,
+        valueGetter: (params) => params ? `USER-${params.slice(-6).toUpperCase()}` : 'N/A'
+      },
+      { field: 'name', headerName: 'Name', width: 150 },
+      { field: 'email', headerName: 'Email', width: 200 },
+      { field: 'phoneNumber', headerName: 'Phone', width: 130 },
+      { 
+        field: 'role_id', 
+        headerName: 'Role', 
+        width: 130,
+        valueGetter: (params) => params?.row?.role_id?.name || 'N/A'
+      },
+      { 
+        field: 'isEmailVerified', 
+        headerName: 'Verified', 
+        width: 100,
+        valueGetter: (params) => params?.row?.isEmailVerified ? 'Yes' : 'No'
+      },
     ],
     '/permissions': [
-      { field: 'id', headerName: 'ID', width: 90 },
+      { 
+        field: 'id', 
+        headerName: 'ID', 
+        width: 150,
+        valueGetter: (params) => params ? `PERM-${params.slice(-6).toUpperCase()}` : 'N/A'
+      },
       { field: 'name', headerName: 'Permission Name', width: 200 },
       { field: 'description', headerName: 'Description', width: 300 },
-      { field: 'module', headerName: 'Module', width: 150 },
+      { field: 'sectionName', headerName: 'Module', width: 150 }
     ],
     '/roles': [
-      { field: 'id', headerName: 'ID', width: 90 },
+      { 
+        field: 'id', 
+        headerName: 'ID', 
+        width: 150,
+        valueGetter: (params) => params ? `ROLE-${params.slice(-6).toUpperCase()}` : 'N/A'
+      },
       { field: 'name', headerName: 'Role Name', width: 200 },
       { field: 'description', headerName: 'Description', width: 300 },
-      { field: 'usersCount', headerName: 'Users', width: 130 },
+      // { field: 'usersCount', headerName: 'Users', width: 130 }
     ],
     '/permission-relations': [
-      { field: 'id', headerName: 'ID', width: 90 },
-      { field: 'roleName', headerName: 'Role', width: 200 },
-      { field: 'permissionName', headerName: 'Permission', width: 200 },
+      { 
+        field: 'id', 
+        headerName: 'ID', 
+        width: 150,
+        valueGetter: (params) => params ? `REL-${params.slice(-6).toUpperCase()}` : 'N/A'
+      },
+      { 
+        field: 'roleName', 
+        headerName: 'Role', 
+        width: 200,
+        valueGetter: (params) => params?.row?.role_id?.name || 'N/A'
+      },
+      { 
+        field: 'permissionName', 
+        headerName: 'Permission', 
+        width: 200,
+        valueGetter: (params) => params?.row?.permission_id?.name || 'N/A'
+      }
     ],
     '/warehouse': [
-      { field: 'id', headerName: 'ID', width: 90 },
+      { 
+        field: 'id', 
+        headerName: 'ID', 
+        width: 150,
+        valueGetter: (params) => params ? `WH-${params.slice(-6).toUpperCase()}` : 'N/A'
+      },
       { field: 'name', headerName: 'Warehouse Name', width: 200 },
       { field: 'location', headerName: 'Location', width: 200 },
       { field: 'capacity', headerName: 'Capacity', width: 130 },
-      { field: 'status', headerName: 'Status', width: 130 },
+      { field: 'status', headerName: 'Status', width: 130 }
     ],
-  };
-
-  // API endpoint mapping
-  const apiEndpoints = {
-    '/users': 'http://localhost:3000/api/users',
-    '/permissions': 'http://localhost:3000/api/permissions',
-    '/roles': 'http://localhost:3000/api/roles',
-    '/permission-relations': 'http://localhost:3000/api/role-permissions',
-    '/warehouse': 'http://localhost:3000/api/warehouses',
   };
 
   // Create axios instance with default config
   const axiosInstance = axios.create({
+    baseURL: 'http://localhost:3000/api',
     headers: {
-      'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json'
     }
   });
 
-  // Add axios response interceptor to handle common errors
+  // Add request interceptor to add token to all requests
+  axiosInstance.interceptors.request.use(
+    (config) => {
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Add response interceptor to handle common errors
   axiosInstance.interceptors.response.use(
     (response) => response,
     (error) => {
       if (error.response) {
         switch (error.response.status) {
           case 401:
-            // Handle unauthorized - maybe redirect to login
+            logger.error('Unauthorized access');
             setError('Session expired. Please login again.');
-            // You might want to dispatch a logout action here
+            navigate('/');
             break;
           case 403:
+            logger.error('Forbidden access');
             setError('You do not have permission to access this resource.');
             break;
           case 404:
+            logger.error('Resource not found');
             setError('Resource not found.');
             break;
           default:
+            logger.error('API Error:', error.response.data);
             setError(error.response.data.message || 'An error occurred while fetching data.');
         }
       } else if (error.request) {
+        logger.error('Network error');
         setError('Network error. Please check your connection.');
       } else {
+        logger.error('Unexpected error:', error);
         setError('An unexpected error occurred.');
       }
       return Promise.reject(error);
     }
   );
+
+  // API endpoint mapping with permission checks
+  const apiEndpoints = {
+    '/users': {
+      url: '/users',
+      requiredPermissionId: 1  // Replace with actual permission ID for viewing users
+    },
+    '/permissions': {
+      url: '/permissions',
+      requiredPermissionId: 2  // Replace with actual permission ID for viewing permissions
+    },
+    '/roles': {
+      url: '/roles',
+      requiredPermissionId: 3  // Replace with actual permission ID for viewing roles
+    },
+    '/permission-relations': {
+      url: '/role-permissions',
+      requiredPermissionId: 4  // Replace with actual permission ID for viewing role permissions
+    },
+    '/warehouse': {
+      url: '/warehouses',
+      requiredPermissionId: 5  // Replace with actual permission ID for viewing warehouses
+    },
+  };
 
   // Update the fetchData function
   useEffect(() => {
@@ -170,18 +251,43 @@ const SectionPage = () => {
           throw new Error('Invalid endpoint');
         }
 
-        // Use the configured axios instance
-        const response = await axiosInstance.get(endpoint);
-        
-        // Assuming the API returns data in { success: boolean, data: array } format
-        if (response.data.success) {
-          setData(response.data.data || []);
+        // Check if user has required permission
+        const hasPermission = userPermissions.some(
+          permission => Number(permission.permission_id) === Number(endpoint.requiredPermissionId)
+        );
+
+        if (!hasPermission) {
+          logger.warn('Permission denied:', {
+            requiredPermissionId: endpoint.requiredPermissionId,
+            userPermissions: userPermissions.map(p => p.permission_id)
+          });
+          setError('You do not have permission to access this resource.');
+          setLoading(false);
+          return;
+        }
+
+        const response = await axiosInstance.get(endpoint.url);
+        // Handle the new API response format
+        if (response.data.code === 200) {
+          // Ensure each row has an id property for DataGrid
+          const processedData = (response.data.data || []).map(row => ({
+            ...row,
+            id: row._id // Use MongoDB _id as the unique identifier
+          }));
+          setData(processedData);
         } else {
           throw new Error(response.data.message || 'Failed to fetch data');
         }
       } catch (err) {
-        console.error('Error fetching data:', err);
-        // Error is now handled by the interceptor
+        logger.error('Error fetching data:', err);
+        if (err.response?.status === 403) {
+          setError('You do not have permission to access this resource.');
+        } else if (err.response?.status === 401) {
+          setError('Session expired. Please login again.');
+          navigate('/');
+        } else {
+          setError(err.message || 'An error occurred while fetching data.');
+        }
       } finally {
         setLoading(false);
       }
@@ -191,8 +297,9 @@ const SectionPage = () => {
       fetchData();
     } else {
       setError('Authentication token not found');
+      navigate('/');
     }
-  }, [location.pathname, token]);
+  }, [location.pathname, token, userPermissions, navigate]);
 
   // Add error display component
   const ErrorDisplay = ({ message }) => (
@@ -280,12 +387,12 @@ const SectionPage = () => {
   return (
     <Box sx={{ 
       width: '100%',
-      maxWidth: '100%', // Ensure no overflow
-      overflowX: 'hidden', // Prevent horizontal scroll
+      maxWidth: '100%',
+      overflowX: 'hidden',
     }}>
       {/* Breadcrumbs Section */}
       <Box sx={{ 
-        px: { xs: 2, sm: 3, md: 4 }, // Responsive padding
+        px: { xs: 2, sm: 3, md: 4 },
         py: 2, 
         backgroundColor: 'white', 
         borderBottom: '1px solid #e0e0e0',
@@ -310,7 +417,7 @@ const SectionPage = () => {
 
       {/* Header Section */}
       <Box sx={{ 
-        px: { xs: 2, sm: 3, md: 4 }, // Responsive padding
+        px: { xs: 2, sm: 3, md: 4 },
         py: 3, 
         backgroundColor: 'white', 
         borderBottom: '1px solid #e0e0e0',
@@ -373,11 +480,12 @@ const SectionPage = () => {
 
       {/* Actions Row */}
       <Box sx={{ 
-        px: { xs: 2, sm: 3, md: 4 }, // Responsive padding
+        px: { xs: 2, sm: 3, md: 4 },
         py: 2,
         backgroundColor: 'white',
         borderBottom: '1px solid #e0e0e0',
         width: '100%',
+        overflowX: 'hidden',
       }}>
         <Box sx={{ 
           display: 'flex', 
@@ -386,6 +494,8 @@ const SectionPage = () => {
           alignItems: { xs: 'stretch', md: 'center' },
           gap: 2,
           width: '100%',
+          maxWidth: '100%',
+          overflowX: 'hidden',
         }}>
           {/* Add New Button */}
           <Button
@@ -398,6 +508,8 @@ const SectionPage = () => {
               },
               height: '48px',
               px: 3,
+              whiteSpace: 'nowrap',
+              minWidth: 'fit-content',
             }}
           >
             Add New {getBreadcrumbText(location.pathname).slice(0, -1)}
@@ -407,8 +519,11 @@ const SectionPage = () => {
           <Box sx={{ 
             display: 'flex',
             gap: 1,
-            flex: { xs: '1', md: '0 1 500px' }, // Increased max width
+            flex: { xs: '1', md: '0 1 400px' },
+            minWidth: 0, // This is important for text overflow
             width: '100%',
+            maxWidth: '100%',
+            overflowX: 'hidden',
           }}>
             <TextField
               fullWidth
@@ -426,6 +541,9 @@ const SectionPage = () => {
                   '&:hover': {
                     backgroundColor: '#f0f0f0',
                   },
+                  '& .MuiInputBase-root': {
+                    maxWidth: '100%',
+                  }
                 }
               }}
             />
@@ -437,6 +555,7 @@ const SectionPage = () => {
                   backgroundColor: '#1565c0',
                 },
                 minWidth: '100px',
+                whiteSpace: 'nowrap',
               }}
             >
               Search
@@ -449,12 +568,14 @@ const SectionPage = () => {
       <Box sx={{ 
         p: { xs: 2, sm: 3, md: 4 },
         width: '100%',
+        overflowX: 'auto',
       }}>
         <Paper 
           sx={{ 
             width: '100%',
             p: { xs: 2, sm: 3 },
             minHeight: 'calc(100vh - 350px)',
+            overflowX: 'auto',
           }}
         >
           {renderContent()}

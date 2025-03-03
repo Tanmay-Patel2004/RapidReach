@@ -77,7 +77,7 @@ function App() {
   }
 
   return (
-    <Box sx={{ display: 'block' }}>
+    <Box sx={{ display: 'flex' }}>
       <Navbar />
       <Box
         component="main"
