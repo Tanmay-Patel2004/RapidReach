@@ -16,8 +16,15 @@ import {
   FormLabel,
   Grid,
   Divider,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
+import { LoadingButton } from "@mui/lab";
 import GoogleIcon from "@mui/icons-material/Google";
+import { Link as RouterLink } from "react-router-dom";
 
 // Add BASE_URL constant
 const BASE_URL = "http://localhost:3000/api";
@@ -27,6 +34,7 @@ const GOOGLE_CLIENT_ID =
 const SignUpPage = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const [openSuccessDialog, setOpenSuccessDialog] = useState(false);
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -34,7 +42,6 @@ const SignUpPage = () => {
     password: "",
     confirmPassword: "",
     dateOfBirth: "",
-    role_id: "67bb9c6aee11822f1295c3e3",
     phoneNumber: "",
     address: {
       street: "",
@@ -82,9 +89,8 @@ const SignUpPage = () => {
           callback: handleGoogleResponse,
           auto_select: false,
           cancel_on_tap_outside: true,
-          context: "signup",
+          context: "signin",
           ux_mode: "popup",
-          hosted_domain: "gmail.com",
         });
 
         const buttonElement = document.getElementById("googleSignInButton");
@@ -93,7 +99,7 @@ const SignUpPage = () => {
             type: "standard",
             theme: "outline",
             size: "large",
-            text: "continue_with",
+            text: "signin_with",
             shape: "rectangular",
             logo_alignment: "center",
             width: buttonElement.offsetWidth,
@@ -145,35 +151,27 @@ const SignUpPage = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ idToken: googleToken }),
-        credentials: "include",
       });
 
       const data = await backendResponse.json();
       console.log("Backend response:", data);
 
       if (backendResponse.ok) {
-        // Store user data and token
-        localStorage.setItem("token", data.token);
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            id: data._id,
-            firstName: data.firstName,
-            lastName: data.lastName,
-            email: data.email,
-            profilePicture: data.profilePicture,
-            role: data.role_id.name,
-          })
-        );
+        // Store user data in the exact format expected by Navbar
+        const userData = {
+          id: data.data._id,
+          firstName: data.data.firstName,
+          lastName: data.data.lastName,
+          email: data.data.email,
+          role_id: data.data.role_id,
+        };
 
-        // Redirect based on user role
-        if (data.role_id.name === "customer") {
-          navigate("/customer/dashboard");
-        } else if (data.role_id.name === "driver") {
-          navigate("/driver/dashboard");
-        } else {
-          navigate("/dashboard"); // fallback dashboard route
-        }
+        // Store token and user data
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem("user", JSON.stringify(userData));
+
+        // Force a full page reload and redirect to dashboard
+        window.location.replace("/customer/dashboard");
       } else {
         throw new Error(data.message || "Google sign-in failed");
       }
@@ -220,6 +218,11 @@ const SignUpPage = () => {
     });
   };
 
+  const handleCloseSuccessDialog = () => {
+    setOpenSuccessDialog(false);
+    navigate("/customer/dashboard");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -231,14 +234,22 @@ const SignUpPage = () => {
       return;
     }
 
-    // Create the exact payload that the backend expects
+    // Create the exact payload that matches your backend expectations
     const requestPayload = {
       firstName: formData.firstName.trim(),
       lastName: formData.lastName.trim(),
       email: formData.email.trim(),
       password: formData.password,
       dateOfBirth: formData.dateOfBirth,
-      role_id: formData.role_id,
+      role_id: "67bb9c6aee11822f1295c3e3", // Default customer role ID
+      phoneNumber: formData.phoneNumber || null,
+      address: {
+        street: formData.address.street || null,
+        unitNumber: formData.address.unitNumber || null,
+        province: formData.address.province || null,
+        country: formData.address.country || null,
+        zipCode: formData.address.zipCode || null,
+      },
     };
 
     // Validate required fields
@@ -248,7 +259,6 @@ const SignUpPage = () => {
       "email",
       "password",
       "dateOfBirth",
-      "role_id",
     ];
     const emptyFields = requiredFields.filter(
       (field) => !requestPayload[field]
@@ -308,9 +318,20 @@ const SignUpPage = () => {
       console.log("Registration response:", data);
 
       if (response.ok) {
-        // If you want to handle the token, you can store it here
-        // localStorage.setItem('token', data.token);
-        navigate("/login"); // Redirect to login page after successful registration
+        // Store user data and token
+        localStorage.setItem("token", data.data.token);
+        localStorage.setItem(
+          "user",
+          JSON.stringify({
+            id: data.data._id,
+            name: data.data.name,
+            email: data.data.email,
+            role_id: data.data.role_id,
+          })
+        );
+
+        // Show success dialog instead of immediate navigation
+        setOpenSuccessDialog(true);
       } else {
         throw new Error(data.message || "Registration failed");
       }
@@ -408,33 +429,15 @@ const SignUpPage = () => {
             Sign Up
           </Typography>
 
-          {/* Google Sign In Button */}
-          <div
-            id="googleSignInButton"
-            style={{
-              width: "100%",
-              marginBottom: "24px",
-            }}
-          />
-
-          <Divider sx={{ width: "100%", mb: 3 }}>
-            <Typography color="textSecondary">OR</Typography>
-          </Divider>
-
-          {error && (
-            <Alert severity="error" sx={{ width: "100%", mb: 2 }}>
-              {error}
-            </Alert>
-          )}
-
-          <Box component="form" onSubmit={handleSubmit} sx={{ width: "100%" }}>
+          <Box component="form" onSubmit={handleSubmit} sx={{ mt: 3 }}>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
                 <TextField
+                  name="firstName"
                   required
                   fullWidth
                   label="First Name"
-                  name="firstName"
+                  autoFocus
                   value={formData.firstName}
                   onChange={handleChange}
                 />
@@ -464,8 +467,8 @@ const SignUpPage = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Password"
                   name="password"
+                  label="Password"
                   type="password"
                   value={formData.password}
                   onChange={handleChange}
@@ -475,8 +478,8 @@ const SignUpPage = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Confirm Password"
                   name="confirmPassword"
+                  label="Confirm Password"
                   type="password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
@@ -486,8 +489,8 @@ const SignUpPage = () => {
                 <TextField
                   required
                   fullWidth
-                  label="Date of Birth"
                   name="dateOfBirth"
+                  label="Date of Birth"
                   type="date"
                   value={formData.dateOfBirth}
                   onChange={handleChange}
@@ -499,11 +502,10 @@ const SignUpPage = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Phone Number"
                   name="phoneNumber"
+                  label="Phone Number"
                   value={formData.phoneNumber}
                   onChange={handleChange}
-                  placeholder="+1 (123) 456-7890"
                 />
               </Grid>
 
@@ -516,8 +518,8 @@ const SignUpPage = () => {
               <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="Street Address"
                   name="address.street"
+                  label="Street Address"
                   value={formData.address.street}
                   onChange={handleChange}
                 />
@@ -525,8 +527,8 @@ const SignUpPage = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Unit Number"
                   name="address.unitNumber"
+                  label="Unit Number"
                   value={formData.address.unitNumber}
                   onChange={handleChange}
                 />
@@ -534,8 +536,8 @@ const SignUpPage = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Province/State"
                   name="address.province"
+                  label="Province/State"
                   value={formData.address.province}
                   onChange={handleChange}
                 />
@@ -543,8 +545,8 @@ const SignUpPage = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Country"
                   name="address.country"
+                  label="Country"
                   value={formData.address.country}
                   onChange={handleChange}
                 />
@@ -552,55 +554,73 @@ const SignUpPage = () => {
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Postal/ZIP Code"
                   name="address.zipCode"
+                  label="Postal/ZIP Code"
                   value={formData.address.zipCode}
                   onChange={handleChange}
                 />
               </Grid>
-
-              <Grid item xs={12}>
-                <FormControl component="fieldset">
-                  <FormLabel component="legend">Account Type</FormLabel>
-                  <RadioGroup
-                    row
-                    name="role"
-                    defaultValue="customer"
-                    onChange={handleRoleChange}>
-                    <FormControlLabel
-                      value="customer"
-                      control={<Radio />}
-                      label="Customer"
-                    />
-                    <FormControlLabel
-                      value="driver"
-                      control={<Radio />}
-                      label="Driver"
-                    />
-                  </RadioGroup>
-                </FormControl>
-              </Grid>
             </Grid>
 
-            <Button
+            {error && (
+              <Alert severity="error" sx={{ mt: 2 }}>
+                {error}
+              </Alert>
+            )}
+
+            <LoadingButton
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-              disabled={loading}>
-              {loading ? <CircularProgress size={24} /> : "Sign Up"}
-            </Button>
+              loading={loading}
+              sx={{ mt: 3, mb: 2 }}>
+              Sign Up
+            </LoadingButton>
 
-            <Box sx={{ textAlign: "center" }}>
-              <Link to="/login" style={{ textDecoration: "none" }}>
-                <Typography color="primary">
+            <div
+              id="googleSignInButton"
+              style={{ width: "100%", marginBottom: "24px" }}
+            />
+
+            <Divider sx={{ width: "100%", mb: 3 }}>
+              <Typography color="textSecondary">OR</Typography>
+            </Divider>
+
+            <Grid container justifyContent="flex-end">
+              <Grid item>
+                <Link component={RouterLink} to="/login" variant="body2">
                   Already have an account? Sign in
-                </Typography>
-              </Link>
-            </Box>
+                </Link>
+              </Grid>
+            </Grid>
           </Box>
         </Paper>
       </Container>
+
+      {/* Success Dialog */}
+      <Dialog
+        open={openSuccessDialog}
+        onClose={handleCloseSuccessDialog}
+        aria-labelledby="alert-dialog-title"
+        aria-describedby="alert-dialog-description">
+        <DialogTitle id="alert-dialog-title">
+          {"Registration Successful! 🎉"}
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="alert-dialog-description">
+            Your account has been created successfully. Click OK to proceed to
+            your dashboard.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={handleCloseSuccessDialog}
+            variant="contained"
+            autoFocus>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Decorative circles */}
       <Box
