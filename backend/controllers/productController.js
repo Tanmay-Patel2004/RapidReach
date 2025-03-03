@@ -1,6 +1,8 @@
 const Product = require('../models/productModel');
 const Warehouse = require('../models/warehouseModel');
 const uploadToS3 = require('../utils/s3Upload');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Get all products
 // @route   GET /api/products
@@ -30,7 +32,7 @@ const getAllProducts = async (req, res) => {
     if (req.query.sort === 'category') {
       products = await Product.find(query)
         .populate('warehouse')
-        .sort({ category: 1 }); // 1 for ascending, -1 for descending
+        .sort({ category: 1 });
     } else {
       products = await Product.find(query)
         .populate('warehouse');
@@ -38,14 +40,18 @@ const getAllProducts = async (req, res) => {
 
     console.log(`✅ Found ${products.length} products`);
 
-    res.json({
-      categories, // Include available categories in response
+    const responseData = {
+      categories,
       count: products.length,
       products
-    });
+    };
+
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Products retrieved successfully', responseData);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get All Products Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -56,12 +62,15 @@ const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req.params.id).populate('warehouse');
     if (!product) {
-      return res.status(404).json({ message: '❌ Product not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Product not found', null);
+      return res.status(code).json({ code, message, data });
     }
-    res.json(product);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Product retrieved successfully', product);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get Product Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -86,13 +95,15 @@ const createProduct = async (req, res) => {
     // Check if product with this SKU already exists
     const productExists = await Product.findOne({ sku });
     if (productExists) {
-      return res.status(400).json({ message: '❌ Product with this SKU already exists' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Product with this SKU already exists', null);
+      return res.status(code).json({ code, message, data });
     }
 
     // Verify warehouse exists
     const warehouse = await Warehouse.findOne({ warehouseCode });
     if (!warehouse) {
-      return res.status(400).json({ message: '❌ Invalid warehouse code' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Invalid warehouse code', null);
+      return res.status(code).json({ code, message, data });
     }
 
     // Handle multiple image uploads
@@ -105,10 +116,8 @@ const createProduct = async (req, res) => {
         console.log('✅ Successfully uploaded images:', imageUrls);
       } catch (uploadError) {
         console.error('❌ Image Upload Error:', uploadError);
-        return res.status(400).json({
-          message: 'Error uploading product images',
-          details: uploadError.message
-        });
+        const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Error uploading product images', uploadError);
+        return res.status(code).json({ code, message, data });
       }
     }
 
@@ -121,10 +130,8 @@ const createProduct = async (req, res) => {
         console.log('✅ Successfully uploaded video:', videoUrl);
       } catch (uploadError) {
         console.error('❌ Video Upload Error:', uploadError);
-        return res.status(400).json({
-          message: 'Error uploading product video',
-          details: uploadError.message
-        });
+        const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Error uploading product video', uploadError);
+        return res.status(code).json({ code, message, data });
       }
     }
 
@@ -144,13 +151,13 @@ const createProduct = async (req, res) => {
     });
 
     const populatedProduct = await Product.findById(product._id).populate('warehouse');
-    res.status(201).json(populatedProduct);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'Product created successfully', populatedProduct);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Create Product Error:', error);
-    if (error.name === 'ValidationError') {
-      return res.status(400).json({ message: error.message });
-    }
-    res.status(500).json({ message: error.message });
+    const statusCode = error.name === 'ValidationError' ? httpStatus.BAD_REQUEST : httpStatus.INTERNAL_SERVER_ERROR;
+    const { code, message, data } = getHandlerResponse(false, statusCode, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 

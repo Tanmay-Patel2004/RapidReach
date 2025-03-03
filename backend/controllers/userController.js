@@ -1,5 +1,7 @@
 const User = require('../models/userModel');
 const uploadToS3 = require('../utils/s3Upload');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -12,10 +14,12 @@ const getAllUsers = async (req, res) => {
     const users = await User.find({}).select('-password');
     console.log(`✅ Found ${users.length} users`);
 
-    res.json(users);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Users retrieved successfully', users);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get All Users Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -26,12 +30,15 @@ const getUserById = async (req, res) => {
   try {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) {
-      return res.status(404).json({ message: '❌ User not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'User not found', null);
+      return res.status(code).json({ code, message, data });
     }
-    res.json(user);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'User retrieved successfully', user);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get User Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -51,7 +58,8 @@ const updateUser = async (req, res) => {
 
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: '❌ User not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'User not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     // Handle profile picture upload if file is present
@@ -67,10 +75,8 @@ const updateUser = async (req, res) => {
         profilePictureUrl = await uploadToS3(req.file);
       } catch (uploadError) {
         console.error('❌ Detailed Upload Error:', uploadError);
-        return res.status(400).json({
-          message: 'Error uploading profile picture',
-          details: uploadError.message
-        });
+        const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Error uploading profile picture', { details: uploadError.message });
+        return res.status(code).json({ code, message, data });
       }
     }
 
@@ -101,14 +107,12 @@ const updateUser = async (req, res) => {
     try {
       await user.validate();
     } catch (validationError) {
-      return res.status(400).json({
-        message: 'Validation Error',
-        details: validationError.message
-      });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Validation Error', { details: validationError.message });
+      return res.status(code).json({ code, message, data });
     }
 
     const updatedUser = await user.save();
-    res.json({
+    const userData = {
       _id: updatedUser._id,
       firstName: updatedUser.firstName,
       lastName: updatedUser.lastName,
@@ -117,10 +121,14 @@ const updateUser = async (req, res) => {
       profilePicture: updatedUser.profilePicture,
       phoneNumber: updatedUser.phoneNumber,
       address: updatedUser.address
-    });
+    };
+
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'User updated successfully', userData);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Update User Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -131,14 +139,17 @@ const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
     if (!user) {
-      return res.status(404).json({ message: '❌ User not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'User not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     await user.deleteOne();
-    res.json({ message: '✅ User removed successfully' });
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'User removed successfully', null);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Delete User Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 

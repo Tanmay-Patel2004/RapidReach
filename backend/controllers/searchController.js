@@ -1,5 +1,7 @@
 const asyncHandler = require('express-async-handler');
 const Product = require('../models/productModel');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Search products with filters and pagination
 // @route   GET /api/search
@@ -77,26 +79,26 @@ const searchProducts = asyncHandler(async (req, res) => {
             }
         ]);
 
-        res.json({
-            success: true,
-            data: {
-                products,
-                pagination: {
-                    total,
-                    page: Number(page),
-                    limit: Number(limit),
-                    pages: Math.ceil(total / Number(limit))
-                },
-                filters: {
-                    categories,
-                    priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
-                }
+        const responseData = {
+            products,
+            pagination: {
+                total,
+                page: Number(page),
+                limit: Number(limit),
+                pages: Math.ceil(total / Number(limit))
+            },
+            filters: {
+                categories,
+                priceRange: priceRange[0] || { minPrice: 0, maxPrice: 0 }
             }
-        });
+        };
+
+        const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Search results retrieved successfully', responseData);
+        return res.status(code).json({ code, message, data });
     } catch (error) {
         console.error('Search Error:', error);
-        res.status(500);
-        throw new Error('Error performing search');
+        const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, 'Error performing search', null);
+        return res.status(code).json({ code, message, data });
     }
 });
 

@@ -1,12 +1,13 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  user: null,  // Will contain firstName, lastName, email, _id, role
+  user: null,
   token: null,
-  permissions: [],
-  isAuthenticated: false,
+  loading: false,
   error: null,
-  loading: false
+  isAuthenticated: false,
+  role: null,
+  permissions: []
 };
 
 const authSlice = createSlice({
@@ -18,31 +19,26 @@ const authSlice = createSlice({
       state.error = null;
     },
     loginSuccess: (state, action) => {
-      const { _id, firstName, lastName, email, role_id, permissions, token } = action.payload;
-      
+      const responseData = action.payload.data || action.payload; // Handle both direct payload and nested data
       state.loading = false;
       state.isAuthenticated = true;
-      state.user = { 
-        _id, 
-        firstName, 
-        lastName, 
-        email,
-        role_id // Store the entire role object
-      };
-      state.token = token;
-      state.permissions = permissions;
       state.error = null;
-      
-      // Save auth data to localStorage
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify({ 
-        _id, 
-        firstName, 
-        lastName, 
-        email,
-        role_id // Store the entire role object
-      }));
-      localStorage.setItem('permissions', JSON.stringify(permissions));
+      // Extract user data from the response
+      state.user = {
+        _id: responseData._id,
+        name: responseData.name,
+        email: responseData.email,
+        // Only include these fields if they exist in the payload
+        ...(responseData.profilePicture && { profilePicture: responseData.profilePicture }),
+        ...(responseData.phoneNumber && { phoneNumber: responseData.phoneNumber }),
+        ...(responseData.address && { address: responseData.address }),
+        ...(responseData.isEmailVerified !== undefined && { isEmailVerified: responseData.isEmailVerified }),
+        ...(responseData.dateOfBirth && { dateOfBirth: responseData.dateOfBirth })
+      };
+      state.token = responseData.token;
+      // Store the complete role object from role_id
+      state.role = responseData.role_id || null;
+      state.permissions = responseData.permissions || [];
     },
     loginFailure: (state, action) => {
       state.loading = false;
@@ -50,65 +46,61 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.user = null;
       state.token = null;
+      state.role = null;
       state.permissions = [];
-      
-      // Clear localStorage on failure
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('user');
-      localStorage.removeItem('permissions');
     },
     logout: (state) => {
-      // Clear all auth-related state
       state.user = null;
       state.token = null;
-      state.permissions = [];
-      state.isAuthenticated = false;
-      state.error = null;
       state.loading = false;
-      
-      // Clear localStorage
-      localStorage.clear(); // Clear all storage instead of just auth items
-      
-      // You could also clear specific items if preferred:
-      // localStorage.removeItem('authToken');
-      // localStorage.removeItem('user');
-      // localStorage.removeItem('permissions');
+      state.error = null;
+      state.isAuthenticated = false;
+      state.role = null;
+      state.permissions = [];
     },
-    restoreAuthState: (state) => {
-      const token = localStorage.getItem('authToken');
-      const user = localStorage.getItem('user');
-      const permissions = localStorage.getItem('permissions');
-
-      if (token && user && permissions) {
+    updateUserProfile: (state, action) => {
+      state.user = {
+        ...state.user,
+        ...action.payload
+      };
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
+    restoreAuthState: (state, action) => {
+      if (action.payload) {
+        state.user = action.payload.user;
+        state.token = action.payload.token;
         state.isAuthenticated = true;
-        state.token = token;
-        state.user = JSON.parse(user);
-        state.permissions = JSON.parse(permissions);
+        state.role = action.payload.role;
+        state.permissions = action.payload.permissions || [];
       }
-    },
-  },
+    }
+  }
 });
 
-export const { 
-  loginStart, 
-  loginSuccess, 
-  loginFailure, 
+export const {
+  loginStart,
+  loginSuccess,
+  loginFailure,
   logout,
-  restoreAuthState 
+  updateUserProfile,
+  clearError,
+  restoreAuthState
 } = authSlice.actions;
 
 // Selectors
-export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUser = (state) => state.auth.user;
-export const selectToken = (state) => state.auth.token;
-export const selectPermissions = (state) => state.auth.permissions;
-export const selectUserRole = (state) => state.auth.user?.role_id;
-export const selectAuthError = (state) => state.auth.error;
+export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
+export const selectUserRole = (state) => state.auth.role;
+export const selectUserPermissions = (state) => state.auth.permissions;
 export const selectAuthLoading = (state) => state.auth.loading;
+export const selectAuthError = (state) => state.auth.error;
+export const selectAuthToken = (state) => state.auth.token;
+export const selectToken = selectAuthToken; // Alias for backward compatibility
 
-// Permission check helper
-export const hasPermission = (state, permissionName) => {
-  return state.auth.permissions.some(p => p.name === permissionName);
-};
+// Additional role-specific selectors
+export const selectRoleName = (state) => state.auth.role?.name;
+export const selectRoleId = (state) => state.auth.role?._id;
 
 export default authSlice.reducer; 

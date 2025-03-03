@@ -14,10 +14,15 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.5",
     "@mui/material": "^6.4.5",
+    "@mui/x-data-grid": "^7.27.2",
     "@reduxjs/toolkit": "^2.6.0",
+<<<<<<< HEAD
     "express-session": "^1.18.1",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
+=======
+    "axios": "^1.8.1",
+>>>>>>> 0afdae4afa5256a081cbcc70557133279ab7375d
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-redux": "^9.2.0",

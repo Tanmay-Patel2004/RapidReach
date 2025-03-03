@@ -1,4 +1,6 @@
 const Permission = require('../models/permissionModel');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // @desc    Create new permission
 // @route   POST /api/permissions
@@ -21,12 +23,13 @@ const createPermission = async (req, res) => {
     const permissionExists = await Permission.findOne({ permission_id });
     if (permissionExists) {
       console.log('❌ Permission with this ID already exists:', permission_id);
-      return res.status(400).json({ message: '❌ Permission with this ID already exists' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Permission with this ID already exists', null);
+      return res.status(code).json({ code, message, data });
     }
 
     // Create the permission
     const permission = await Permission.create({
-      permission_id: Number(permission_id), // Ensure permission_id is a number
+      permission_id: Number(permission_id),
       name,
       title,
       description,
@@ -35,10 +38,12 @@ const createPermission = async (req, res) => {
     });
 
     console.log('✅ Permission created successfully:', permission);
-    res.status(201).json(permission);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'Permission created successfully', permission);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Create Permission Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -48,10 +53,12 @@ const createPermission = async (req, res) => {
 const getAllPermissions = async (req, res) => {
   try {
     const permissions = await Permission.find({});
-    res.json(permissions);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Permissions retrieved successfully', permissions);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get All Permissions Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -62,12 +69,15 @@ const getPermissionById = async (req, res) => {
   try {
     const permission = await Permission.findById(req.params.id);
     if (!permission) {
-      return res.status(404).json({ message: '❌ Permission not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Permission not found', null);
+      return res.status(code).json({ code, message, data });
     }
-    res.json(permission);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Permission retrieved successfully', permission);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Get Permission Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -80,7 +90,8 @@ const updatePermission = async (req, res) => {
 
     const permission = await Permission.findById(req.params.id);
     if (!permission) {
-      return res.status(404).json({ message: '❌ Permission not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Permission not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     permission.name = name || permission.name;
@@ -90,10 +101,12 @@ const updatePermission = async (req, res) => {
     permission.sectionName = sectionName || permission.sectionName;
 
     const updatedPermission = await permission.save();
-    res.json(updatedPermission);
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Permission updated successfully', updatedPermission);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Update Permission Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 
@@ -104,14 +117,17 @@ const deletePermission = async (req, res) => {
   try {
     const permission = await Permission.findById(req.params.id);
     if (!permission) {
-      return res.status(404).json({ message: '❌ Permission not found' });
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Permission not found', null);
+      return res.status(code).json({ code, message, data });
     }
 
     await permission.deleteOne();
-    res.json({ message: '✅ Permission removed successfully' });
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Permission removed successfully', null);
+    return res.status(code).json({ code, message, data });
   } catch (error) {
     console.error('❌ Delete Permission Error:', error);
-    res.status(500).json({ message: error.message });
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
   }
 };
 

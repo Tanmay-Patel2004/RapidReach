@@ -4,6 +4,8 @@ const Role = require('../models/roleModel');
 const RolePermission = require('../models/rolePermissionModel');
 const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 // 🔹 Generate JWT Token
 const generateToken = (id) => {
@@ -51,29 +53,29 @@ const register = asyncHandler(async (req, res) => {
   if (!lastName) missingFields.push('lastName');
 
   if (missingFields.length > 0) {
-    res.status(400);
-    throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+    const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, `Missing required fields: ${missingFields.join(', ')}`, null);
+    return res.status(code).json({ code, data, message });
   }
 
   // Check if user exists
   const userExists = await User.findOne({ email });
 
   if (userExists) {
-    res.status(400);
-    throw new Error('User already exists with this email');
+    const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'User already exists with this email', null);
+    return res.status(code).json({ code, data, message });
   }
 
   try {
     // Create user with default customer role
     const user = await User.create({
-      name: name || `${firstName} ${lastName}`, // Use combination if name not provided
+      name: name || `${firstName} ${lastName}`,
       email,
       password,
       firstName,
       lastName,
-      dateOfBirth: dateOfBirth || new Date('1900-01-01'), // Use default date if not provided
+      dateOfBirth: dateOfBirth || new Date('1900-01-01'),
       phoneNumber: phoneNumber || null,
-      role_id: '67bb9c6aee11822f1295c3e3', // Default customer role ID
+      role_id: '67bb9c6aee11822f1295c3e3',
       address: address || {
         street: null,
         unitNumber: null,
@@ -87,7 +89,7 @@ const register = asyncHandler(async (req, res) => {
       const token = generateToken(user._id);
       console.log('✅ User registered successfully:', { userId: user._id });
 
-      res.status(201).json({
+      const userData = {
         _id: user._id,
         name: user.name,
         email: user.email,
@@ -95,12 +97,15 @@ const register = asyncHandler(async (req, res) => {
         lastName: user.lastName,
         role_id: user.role_id,
         token
-      });
+      };
+
+      const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'User registered successfully', userData);
+      return res.status(code).json({ code, data, message });
     }
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(400);
-    throw new Error(error.message || 'Invalid user data');
+   
+    const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, error.message || 'Invalid user data', error);
+    return res.status(code).json({ code, data, message });
   }
 });
 
@@ -111,8 +116,8 @@ const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    res.status(400);
-    throw new Error('Please provide email and password');
+    const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Please provide email and password', null);
+    return res.status(code).json({ code, data, message });
   }
 
   console.log('👤 Login attempt for email:', email);
@@ -123,8 +128,8 @@ const login = asyncHandler(async (req, res) => {
 
   if (!user) {
     console.log('❌ User not found:', email);
-    res.status(401);
-    throw new Error('Invalid email or password');
+    const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Invalid email or password', null);
+    return res.status(code).json({ code, data, message });
   }
 
   // Verify password
@@ -147,7 +152,7 @@ const login = asyncHandler(async (req, res) => {
       permissionsCount: permissions.length
     });
 
-    res.json({
+    const userData = {
       _id: user._id,
       name: user.name,
       email: user.email,
@@ -156,11 +161,14 @@ const login = asyncHandler(async (req, res) => {
       role_id: user.role_id,
       permissions: permissions,
       token
-    });
+    };
+
+    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Login successful', userData);
+    return res.status(code).json({ code, data, message });
   } else {
     console.log('❌ Invalid password for email:', email);
-    res.status(401);
-    throw new Error('Invalid email or password');
+    const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Invalid email or password', null);
+    return res.status(code).json({ code, data, message });
   }
 });
 

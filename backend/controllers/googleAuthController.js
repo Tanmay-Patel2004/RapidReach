@@ -2,6 +2,8 @@ const { OAuth2Client } = require('google-auth-library');
 const jwt = require('jsonwebtoken');
 const User = require('../models/userModel');
 const asyncHandler = require('express-async-handler');
+const { getHandlerResponse } = require('../middleware/responseMiddleware');
+const httpStatus = require('../Helper/http_status');
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -15,8 +17,8 @@ const googleLogin = asyncHandler(async (req, res) => {
     const { idToken } = req.body;
 
     if (!idToken) {
-        res.status(400);
-        throw new Error('ID Token is required');
+        const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'ID Token is required', null);
+        return res.status(code).json({ code, message, data });
     }
 
     try {
@@ -30,8 +32,8 @@ const googleLogin = asyncHandler(async (req, res) => {
         console.log('Google Auth Payload:', payload);
 
         if (!payload) {
-            res.status(401);
-            throw new Error('Invalid payload from Google');
+            const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Invalid payload from Google', null);
+            return res.status(code).json({ code, message, data });
         }
 
         const {
@@ -93,7 +95,7 @@ const googleLogin = asyncHandler(async (req, res) => {
             { expiresIn: '30d' }
         );
 
-        res.json({
+        const userData = {
             _id: user._id,
             name: user.name,
             email: user.email,
@@ -103,12 +105,15 @@ const googleLogin = asyncHandler(async (req, res) => {
             profilePicture: user.profilePicture,
             isEmailVerified: user.isEmailVerified,
             token
-        });
+        };
+
+        const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Google authentication successful', userData);
+        return res.status(code).json({ code, message, data });
 
     } catch (error) {
         console.error('Google Auth Error:', error);
-        res.status(401);
-        throw new Error(`Google authentication failed: ${error.message}`);
+        const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, `Google authentication failed: ${error.message}`, null);
+        return res.status(code).json({ code, message, data });
     }
 });
 

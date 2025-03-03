@@ -3,7 +3,7 @@ const asyncHandler = require('express-async-handler');
 const User = require('../models/userModel');
 const RolePermission = require('../models/rolePermissionModel');
 
-const protect = asyncHandler(async (req, res, next) => {
+const protect = asyncHandler(async (req, res, next) => {  
   let token;
 
   console.log('Auth Header:', req.headers.authorization);
