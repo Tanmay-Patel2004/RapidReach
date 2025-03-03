@@ -96,7 +96,7 @@ const SectionPage = () => {
         field: 'role_id', 
         headerName: 'Role', 
         width: 130,
-        valueGetter: (params) => params?.row?.role_id?.name || 'N/A'
+        valueGetter: (params) => (params?.name ? params.name.charAt(0).toUpperCase() + params.name.slice(1) : 'N/A')
       },
       { 
         field: 'isEmailVerified', 
@@ -123,7 +123,12 @@ const SectionPage = () => {
         width: 150,
         valueGetter: (params) => params ? `ROLE-${params.slice(-6).toUpperCase()}` : 'N/A'
       },
-      { field: 'name', headerName: 'Role Name', width: 200 },
+      { 
+        field: 'name', 
+        headerName: 'Role Name', 
+        width: 200,
+        valueGetter: (params) => params?.name ? params.name.charAt(0).toUpperCase() + params.name.slice(1) : 'N/A'
+      },
       { field: 'description', headerName: 'Description', width: 300 },
       // { field: 'usersCount', headerName: 'Users', width: 130 }
     ],
@@ -135,16 +140,16 @@ const SectionPage = () => {
         valueGetter: (params) => params ? `REL-${params.slice(-6).toUpperCase()}` : 'N/A'
       },
       { 
-        field: 'roleName', 
+        field: 'roleId', 
         headerName: 'Role', 
         width: 200,
-        valueGetter: (params) => params?.row?.role_id?.name || 'N/A'
+        valueGetter: (params) => params?.name || 'N/A'
       },
       { 
-        field: 'permissionName', 
+        field: 'permissionId', 
         headerName: 'Permission', 
         width: 200,
-        valueGetter: (params) => params?.row?.permission_id?.name || 'N/A'
+        valueGetter: (params) => params?.name || 'N/A'
       }
     ],
     '/warehouse': [
@@ -154,10 +159,19 @@ const SectionPage = () => {
         width: 150,
         valueGetter: (params) => params ? `WH-${params.slice(-6).toUpperCase()}` : 'N/A'
       },
-      { field: 'name', headerName: 'Warehouse Name', width: 200 },
-      { field: 'location', headerName: 'Location', width: 200 },
-      { field: 'capacity', headerName: 'Capacity', width: 130 },
-      { field: 'status', headerName: 'Status', width: 130 }
+      { field: 'warehouseCode', headerName: 'Warehouse Code', width: 200 },
+      { 
+        field: 'address', 
+        headerName: 'Location', 
+        width: 200,
+        valueGetter: (params) => params?.zipCode || 'Open'
+      },
+      { 
+        field: 'status', 
+        headerName: 'Status', 
+        width: 130,
+        valueGetter: (params) => params?.status || 'Open'
+      }
     ],
   };
 
