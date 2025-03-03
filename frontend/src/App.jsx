@@ -10,6 +10,8 @@ import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import DriverDashboard from "./pages/dashboards/DriverDashboard";
 import ProfilePage from "./pages/ProfilePage";
+import ProductsPage from "./pages/ProductsPage";
+import ProductDetailsPage from './pages/ProductDetailsPage';
 import {
   restoreAuthState,
   selectIsAuthenticated,
@@ -102,6 +104,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products"
+            element={
+              <ProtectedRoute>
+                <ProductsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/:id"
+            element={
+              <ProtectedRoute>
+                <ProductDetailsPage />
               </ProtectedRoute>
             }
           />
