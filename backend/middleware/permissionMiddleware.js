@@ -1,9 +1,8 @@
 const checkPermission = (requiredPermissionId) => {
   return (req, res, next) => {
     // Temporarily bypass all permission checks
-    return next();
+    // return next();
 
-    /* Original permission checking code (commented out)
     const userPermissions = req.user.permissions || [];
     
     console.log('🔍 Permission Check Details:', {
@@ -35,7 +34,7 @@ const checkPermission = (requiredPermissionId) => {
 
     console.log('✅ Permission granted for:', requiredPermissionId);
     next();
-    */
+    
   };
 };
 

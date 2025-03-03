@@ -40,16 +40,6 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
-  firstName: {
-    type: String,
-    required: [true, "First name is required"],
-    trim: true
-  },
-  lastName: {
-    type: String,
-    required: [true, "Last name is required"],
-    trim: true
-  },
   dateOfBirth: {
     type: Date,
     required: [true, "Date of birth is required"]

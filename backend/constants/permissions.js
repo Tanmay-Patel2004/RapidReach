@@ -15,6 +15,27 @@ const PERMISSIONS = {
     description: 'Allows fetching details of a single user',
     sectionName: 'User Management'
   },
+  EDIT_SINGLE_USER: {
+    permission_id: 2,
+    name: 'EDIT_SINGLE_USER',
+    title: 'Edit Single User',
+    description: 'Allows editing details of a single user',
+    sectionName: 'User Management'
+  },
+  Add_SINGLE_USER: {
+    permission_id: 3,
+    name: 'Add_SINGLE_USER',
+    title: 'Add Single User',
+    description: 'Allows adding a new user to the system',
+    sectionName: 'User Management'
+  },
+  DELETE_SINGLE_USER: {
+    permission_id: 4,
+    name: 'DELETE_SINGLE_USER',
+    title: 'Delete Single User',
+    description: 'Allows deletion of a single user',
+    sectionName: 'User Management'
+  },
   READ_ALL_PERMISSIONS: {
     permission_id: 6,
     name: 'READ_ALL_PERMISSIONS',
@@ -200,6 +221,9 @@ const PERMISSION_IDS = {
   // User Management
   READ_ALL_USERS: 1,
   FETCH_SINGLE_USER: 5,
+  EDIT_SINGLE_USER: 2,
+  Add_SINGLE_USER: 3,
+  DELETE_SINGLE_USER: 4,
   READ_ALL_PERMISSIONS: 6,
   EDIT_SINGLE_PERMISSION: 7,
   ADD_SINGLE_PERMISSION: 8,

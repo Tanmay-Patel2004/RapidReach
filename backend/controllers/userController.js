@@ -47,13 +47,20 @@ const getUserById = async (req, res) => {
 // @access  Private
 const updateUser = async (req, res) => {
   try {
+    // Check if any update fields are provided
+    if (Object.keys(req.body).length === 0 && !req.file) {
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'No update fields provided', null);
+      return res.status(code).json({ code, message, data });
+    }
+
     const {
-      firstName,
-      lastName,
+      name,
       email,
       dateOfBirth,
       phoneNumber,
-      address
+      address,
+      role_id,
+      isEmailVerified
     } = req.body;
 
     const user = await User.findById(req.params.id);
@@ -80,47 +87,60 @@ const updateUser = async (req, res) => {
       }
     }
 
-    // Update basic fields
-    user.firstName = firstName || user.firstName;
-    user.lastName = lastName || user.lastName;
-    user.email = email || user.email;
-    user.dateOfBirth = dateOfBirth || user.dateOfBirth;
-    user.profilePicture = profilePictureUrl;
-
-    // Update phone number if provided
-    if (phoneNumber) {
-      user.phoneNumber = phoneNumber;
-    }
+    // Create an update object with only the fields that are provided
+    const updateFields = {};
+    
+    if (name !== undefined) updateFields.name = name;
+    if (email !== undefined) updateFields.email = email;
+    if (dateOfBirth !== undefined) updateFields.dateOfBirth = dateOfBirth;
+    if (role_id !== undefined) updateFields.role_id = role_id;
+    if (typeof isEmailVerified === 'boolean') updateFields.isEmailVerified = isEmailVerified;
+    if (phoneNumber !== undefined) updateFields.phoneNumber = phoneNumber;
+    if (profilePictureUrl !== undefined) updateFields.profilePicture = profilePictureUrl;
 
     // Update address fields if provided
     if (address) {
-      user.address = {
-        street: address.street || user.address?.street,
-        unitNumber: address.unitNumber || user.address?.unitNumber,
-        province: address.province || user.address?.province,
-        country: address.country || user.address?.country,
-        zipCode: address.zipCode || user.address?.zipCode
+      updateFields.address = {
+        street: address.street ?? user.address?.street ?? null,
+        unitNumber: address.unitNumber ?? user.address?.unitNumber ?? null,
+        province: address.province ?? user.address?.province ?? null,
+        country: address.country ?? user.address?.country ?? null,
+        zipCode: address.zipCode ?? user.address?.zipCode ?? null
       };
     }
+
+    // Check if there are any actual updates to be made
+    if (Object.keys(updateFields).length === 0) {
+      const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'No valid update fields provided', null);
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Update the user with the provided fields
+    Object.assign(user, updateFields);
 
     // Validate the updated user data
     try {
       await user.validate();
     } catch (validationError) {
+      console.error('Validation Error Details:', validationError);
       const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Validation Error', { details: validationError.message });
       return res.status(code).json({ code, message, data });
     }
 
     const updatedUser = await user.save();
     const userData = {
-      _id: updatedUser._id,
-      firstName: updatedUser.firstName,
-      lastName: updatedUser.lastName,
-      email: updatedUser.email,
-      dateOfBirth: updatedUser.dateOfBirth,
+      address: updatedUser.address,
       profilePicture: updatedUser.profilePicture,
+      isEmailVerified: updatedUser.isEmailVerified,
       phoneNumber: updatedUser.phoneNumber,
-      address: updatedUser.address
+      _id: updatedUser._id,
+      dateOfBirth: updatedUser.dateOfBirth,
+      email: updatedUser.email,
+      role_id: updatedUser.role_id,
+      name: updatedUser.name,
+      createdAt: updatedUser.createdAt,
+      updatedAt: updatedUser.updatedAt,
+      __v: updatedUser.__v
     };
 
     const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'User updated successfully', userData);
