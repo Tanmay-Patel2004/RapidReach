@@ -17,17 +17,62 @@ const { errorHandler } = require('./middleware/errorMiddleware');
 dotenv.config();
 const app = express();
 
-// CORS configuration
-app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:3000'],
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-}));
+// Request logger - Move before CORS
+app.use((req, res, next) => {
+  console.log(`📨 ${req.method} ${req.url}`, {
+    body: req.body,
+    headers: req.headers,
+    path: req.path
+  });
+  next();
+});
 
-// Body parser
+// Body parser - Move before CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// CORS configuration
+const corsOptions = {
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://127.0.0.1:5173',
+      'http://localhost:3000',
+      'http://localhost:5174',
+      'http://127.0.0.1:5174',
+      'https://accounts.google.com',
+      'https://oauth2.googleapis.com'
+    ];
+
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.log('Blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: [
+    'Content-Type',
+    'Accept',
+    'Authorization',
+    'X-Requested-With',
+    'X-HTTP-Method-Override',
+    'Origin',
+    'google-signin-client_id'
+  ],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  credentials: true,
+  maxAge: 86400, // 24 hours
+  preflightContinue: false,
+  optionsSuccessStatus: 204
+};
+
+// Apply CORS middleware
+app.use(cors(corsOptions));
 
 // Base API path
 const apiRouter = express.Router();
@@ -38,16 +83,6 @@ apiRouter.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs, {
   explorer: true,
   customSiteTitle: "RapidReach API Documentation"
 }));
-
-// Request logger
-app.use((req, res, next) => {
-  console.log(`📨 ${req.method} ${req.url}`, {
-    body: req.body,
-    headers: req.headers,
-    path: req.path
-  });
-  next();
-});
 
 // Routes
 apiRouter.use('/auth', authRoutes);

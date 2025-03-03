@@ -79,7 +79,8 @@ const createProduct = async (req, res) => {
       stockQuantity,
       unit,
       status,
-      warehouseCode
+      warehouseCode,
+      specifications
     } = req.body;
 
     // Check if product with this SKU already exists
@@ -138,7 +139,8 @@ const createProduct = async (req, res) => {
       status,
       warehouseCode,
       images: imageUrls,
-      video: videoUrl
+      video: videoUrl,
+      specifications: specifications || []
     });
 
     const populatedProduct = await Product.findById(product._id).populate('warehouse');
@@ -166,7 +168,8 @@ const updateProduct = async (req, res) => {
       stockQuantity,
       unit,
       status,
-      warehouseCode
+      warehouseCode,
+      specifications
     } = req.body;
 
     const product = await Product.findById(req.params.id);
@@ -236,6 +239,10 @@ const updateProduct = async (req, res) => {
     product.warehouseCode = warehouseCode || product.warehouseCode;
     product.images = imageUrls;
     product.video = videoUrl;
+    // Update specifications if provided
+    if (specifications) {
+      product.specifications = specifications;
+    }
 
     const updatedProduct = await product.save();
     const populatedProduct = await Product.findById(updatedProduct._id).populate('warehouse');

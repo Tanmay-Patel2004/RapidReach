@@ -53,7 +53,19 @@ const productSchema = new mongoose.Schema({
   video: {
     type: String,
     default: null
-  }
+  },
+  specifications: [{
+    key: {
+      type: String,
+      required: [true, 'Specification key is required'],
+      trim: true
+    },
+    value: {
+      type: String,
+      required: [true, 'Specification value is required'],
+      trim: true
+    }
+  }]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },
