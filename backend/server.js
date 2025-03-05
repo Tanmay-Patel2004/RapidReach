@@ -18,6 +18,7 @@ dotenv.config();
 const app = express();
 
 // Request logger - Move before CORS
+// This is temporary comment and should remove in production. 
 app.use((req, res, next) => {
   console.log(`📨 ${req.method} ${req.url}`, {
     body: req.body,
