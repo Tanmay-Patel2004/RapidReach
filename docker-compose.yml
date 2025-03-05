@@ -1,0 +1,39 @@
+version: '3.8'
+networks:
+  my_network:
+
+services:
+  backend:
+    build: ./backend
+    container_name: backend
+    environment:
+      - NODE_ENV=development
+      - MONGODB_USER=iiprofit_user
+      - MONGODB_PASSWORD=Waterloo%23Conestoga2025
+      - MONGODB_HOST=mongodb
+    ports:
+      - "5000:5000"
+    depends_on:
+      - mongodb
+
+  frontend:
+    build: ./Frontend
+    container_name: frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=iiprofit_user
+      - MONGO_INITDB_ROOT_PASSWORD=Waterloo%23Conestoga2025
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+volumes:
+  mongo-data:

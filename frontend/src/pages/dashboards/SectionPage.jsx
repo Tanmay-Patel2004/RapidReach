@@ -1,3 +1,31 @@
+import React, { useState, useEffect } from 'react';
+import { 
+  Box, 
+  Typography, 
+  Paper,
+  Breadcrumbs,
+  Link,
+  Button,
+  TextField,
+  InputAdornment,
+  CircularProgress,
+} from '@mui/material';
+import { DataGrid } from '@mui/x-data-grid';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { 
+  People,
+  Security,
+  AdminPanelSettings,
+  Warehouse,
+  Add as AddIcon,
+  Search as SearchIcon,
+} from '@mui/icons-material';
+import axios from 'axios';
+import { useSelector } from 'react-redux';
+import { selectToken, selectUserPermissions } from '../../store/slices/authSlice';
+import logger from '../../utils/logger';
+import config from '../../config/env.config';
+
 const columnDefinitions = {
   '/users': [
     { 
@@ -74,3 +102,19 @@ const columnDefinitions = {
     }
   ],
 }; 
+
+const SectionPage = () => {
+  // ... existing code ...
+
+  // Create axios instance with default config
+  const axiosInstance = axios.create({
+    baseURL: config.api.baseURL,
+    headers: {
+      'Content-Type': 'application/json'
+    }
+  });
+
+  // ... rest of the code ...
+}
+
+export default SectionPage; 
