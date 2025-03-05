@@ -7,6 +7,15 @@ const asyncHandler = require('express-async-handler');
 const { getHandlerResponse } = require('../middleware/responseMiddleware');
 const httpStatus = require('../Helper/http_status');
 
+// Cookie options for JWT
+const cookieOptions = {
+  httpOnly: true, // Prevents JavaScript access
+  secure: process.env.NODE_ENV === 'production', // HTTPS only in production
+  sameSite: 'strict', // Protection against CSRF
+  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+  path: '/' // Cookie is available for all paths
+};
+
 // 🔹 Generate JWT Token
 const generateToken = (id) => {
   console.log('🔑 Generating token for ID:', id);
@@ -86,7 +95,10 @@ const register = asyncHandler(async (req, res) => {
     });
 
     if (user) {
+      // Generate token and set cookie
       const token = generateToken(user._id);
+      res.cookie('jwt', token, cookieOptions);
+
       console.log('✅ User registered successfully:', { userId: user._id });
 
       const userData = {
@@ -95,15 +107,13 @@ const register = asyncHandler(async (req, res) => {
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
-        role_id: user.role_id,
-        token
+        role_id: user.role_id
       };
 
       const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'User registered successfully', userData);
       return res.status(code).json({ code, data, message });
     }
   } catch (error) {
-
     const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, error.message || 'Invalid user data', error);
     return res.status(code).json({ code, data, message });
   }
@@ -134,7 +144,9 @@ const login = asyncHandler(async (req, res) => {
 
   // Verify password
   if (await user.matchPassword(password)) {
+    // Generate token and set cookie
     const token = generateToken(user._id);
+    res.cookie('jwt', token, cookieOptions);
 
     // Fetch permissions for the user's role
     const rolePermissions = await RolePermission.find({ roleId: user.role_id._id })
@@ -159,8 +171,7 @@ const login = asyncHandler(async (req, res) => {
       firstName: user.firstName,
       lastName: user.lastName,
       role_id: user.role_id,
-      permissions: permissions,
-      token
+      permissions: permissions
     };
 
     const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Login successful', userData);
@@ -172,7 +183,23 @@ const login = asyncHandler(async (req, res) => {
   }
 });
 
+// 🔹 @desc    Logout User
+// 🔹 @route   POST /api/auth/logout
+// 🔹 @access  Private
+const logout = asyncHandler(async (req, res) => {
+  // Clear the JWT cookie
+  res.cookie('jwt', '', {
+    httpOnly: true,
+    expires: new Date(0), // Expire immediately
+    path: '/'
+  });
+
+  const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Logged out successfully', null);
+  return res.status(code).json({ code, message, data });
+});
+
 module.exports = {
   register,
-  login
+  login,
+  logout
 };
