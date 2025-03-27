@@ -2,7 +2,6 @@ import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   user: null,
-  token: null,
   loading: false,
   error: null,
   isAuthenticated: false,
@@ -19,7 +18,7 @@ const authSlice = createSlice({
       state.error = null;
     },
     loginSuccess: (state, action) => {
-      const responseData = action.payload.data || action.payload; // Handle both direct payload and nested data
+      const responseData = action.payload.data || action.payload;
       state.loading = false;
       state.isAuthenticated = true;
       state.error = null;
@@ -35,34 +34,49 @@ const authSlice = createSlice({
         ...(responseData.isEmailVerified !== undefined && { isEmailVerified: responseData.isEmailVerified }),
         ...(responseData.dateOfBirth && { dateOfBirth: responseData.dateOfBirth })
       };
-      state.token = responseData.token;
       // Store the complete role object from role_id
       state.role = responseData.role_id || null;
       state.permissions = responseData.permissions || [];
+
+      // Store auth state in localStorage (excluding sensitive data)
+      localStorage.setItem('authState', JSON.stringify({
+        user: state.user,
+        isAuthenticated: true,
+        role: state.role,
+        permissions: state.permissions
+      }));
     },
     loginFailure: (state, action) => {
       state.loading = false;
       state.error = action.payload;
       state.isAuthenticated = false;
       state.user = null;
-      state.token = null;
       state.role = null;
       state.permissions = [];
+      // Clear localStorage on failure
+      localStorage.removeItem('authState');
     },
     logout: (state) => {
       state.user = null;
-      state.token = null;
       state.loading = false;
       state.error = null;
       state.isAuthenticated = false;
       state.role = null;
       state.permissions = [];
+      // Clear localStorage on logout
+      localStorage.removeItem('authState');
     },
     updateUserProfile: (state, action) => {
       state.user = {
         ...state.user,
         ...action.payload
       };
+      // Update localStorage when profile is updated
+      const authState = JSON.parse(localStorage.getItem('authState') || '{}');
+      localStorage.setItem('authState', JSON.stringify({
+        ...authState,
+        user: state.user
+      }));
     },
     clearError: (state) => {
       state.error = null;
@@ -70,8 +84,7 @@ const authSlice = createSlice({
     restoreAuthState: (state, action) => {
       if (action.payload) {
         state.user = action.payload.user;
-        state.token = action.payload.token;
-        state.isAuthenticated = true;
+        state.isAuthenticated = action.payload.isAuthenticated;
         state.role = action.payload.role;
         state.permissions = action.payload.permissions || [];
       }

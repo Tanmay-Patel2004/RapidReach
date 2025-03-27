@@ -16,9 +16,12 @@ import {
   restoreAuthState,
   selectIsAuthenticated,
   selectUserRole,
+  loginSuccess,
+  logout,
 } from "./store/slices/authSlice";
 import SectionPage from './components/common/SectionPage';
 import { getStoredAuthState } from './middleware/authMiddleware';
+import { api } from './utils/api';
 
 function App() {
   const dispatch = useDispatch();
@@ -30,6 +33,25 @@ function App() {
     if (storedAuthState) {
       dispatch(restoreAuthState(storedAuthState));
     }
+  }, [dispatch]);
+
+  useEffect(() => {
+    const verifyAuth = async () => {
+      try {
+        const response = await api.fetch('/auth/verify');
+        const data = await response.json();
+        
+        if (data.code === 200) {
+          dispatch(loginSuccess(data.data));
+        } else {
+          dispatch(logout());
+        }
+      } catch (error) {
+        dispatch(logout());
+      }
+    };
+
+    verifyAuth();
   }, [dispatch]);
 
   const DashboardComponent = useMemo(() => {

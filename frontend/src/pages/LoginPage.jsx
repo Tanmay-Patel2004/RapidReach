@@ -19,6 +19,7 @@ import {
 } from "../store/slices/authSlice";
 import logger from "../utils/logger";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
+import { api } from '../utils/api';
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -44,11 +45,8 @@ const LoginPage = () => {
     dispatch(loginStart());
 
     try {
-      const response = await fetch("http://localhost:3000/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const response = await api.fetch('/auth/login', {
+        method: 'POST',
         body: JSON.stringify(formData),
       });
 
