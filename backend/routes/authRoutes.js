@@ -1,6 +1,7 @@
 const express = require('express');
-const { login, register } = require('../controllers/authController');
+const { login, register, logout, verifyAuth } = require('../controllers/authController');
 const { googleLogin } = require('../controllers/googleAuthController');
+const { protect } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
@@ -186,5 +187,18 @@ router.post('/login', login);
  *               $ref: '#/components/schemas/Error'
  */
 router.post('/google', googleLogin);
+
+router.post('/logout', logout);
+router.get('/verify', protect, verifyAuth);
+
+// Add this temporary debug route
+router.get('/test-cookie', (req, res) => {
+  console.log('Cookies received:', req.cookies);
+  res.json({
+    cookiesReceived: req.cookies,
+    cookieParserWorking: !!req.cookies,
+    jwtCookie: req.cookies.jwt || 'not found'
+  });
+});
 
 module.exports = router; 

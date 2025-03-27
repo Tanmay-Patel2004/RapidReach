@@ -112,4 +112,8 @@ productSchema.pre('save', async function (next) {
   next();
 });
 
-module.exports = mongoose.model('Product', productSchema); 
+productSchema.methods.isStockSufficient = function (quantity) {
+  return this.stockQuantity >= quantity;
+};
+
+module.exports = mongoose.model('Product', productSchema);

@@ -6,31 +6,58 @@ const { getHandlerResponse } = require('./responseMiddleware');
 const httpStatus = require('../Helper/http_status');
 
 const protect = asyncHandler(async (req, res, next) => {
+  console.log('=== Auth Middleware Debug ===');
+  console.log('Headers:', req.headers);
+  console.log('Cookies:', req.cookies);
+  console.log('Cookie Header:', req.headers.cookie);
+  
   let token;
 
-  // Get token from cookie
-  token = req.cookies.jwt;
+  // Try getting token from different sources
+  if (req.cookies?.jwt) {
+    token = req.cookies.jwt;
+    console.log('Token found in cookies');
+  } else if (req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.split(' ')[1];
+    console.log('Token found in Authorization header');
+  } else {
+    console.log('No token found');
+  }
 
   if (!token) {
-    const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Not authorized, no token', null);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.UNAUTHORIZED,
+      'Not authorized, no token found',
+      null
+    );
     return res.status(code).json({ code, message, data });
   }
 
   try {
     // Verify token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Token verified successfully');
 
-    // Get user from token
-    req.user = await User.findById(decoded.id).select('-password');
-
+    // Get user from token with populated role_id
+    req.user = await User.findById(decoded.id)
+      .select('-password')
+      .populate('role_id', '_id name description isActive');
+    
+    console.log('User with populated role:', req.user);
+    
     if (!req.user) {
-      const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Not authorized, user not found', null);
-      return res.status(code).json({ code, message, data });
+      throw new Error('User not found');
     }
 
     // Check if user has a role assigned
     if (!req.user.role_id) {
-      const { code, message, data } = getHandlerResponse(false, httpStatus.FORBIDDEN, 'Not authorized - No role assigned', null);
+      const { code, message, data } = getHandlerResponse(
+        false, 
+        httpStatus.FORBIDDEN, 
+        'Not authorized - No role assigned', 
+        null
+      );
       return res.status(code).json({ code, message, data });
     }
 
@@ -59,7 +86,12 @@ const protect = asyncHandler(async (req, res, next) => {
     next();
   } catch (error) {
     console.error('Auth Error:', error);
-    const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Not authorized, token failed', null);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.UNAUTHORIZED,
+      'Not authorized, token failed',
+      null
+    );
     return res.status(code).json({ code, message, data });
   }
 });

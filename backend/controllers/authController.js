@@ -12,7 +12,7 @@ const cookieOptions = {
   httpOnly: true, // Prevents JavaScript access
   secure: process.env.NODE_ENV === 'production', // HTTPS only in production
   sameSite: 'strict', // Protection against CSRF
-  maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days in milliseconds
+  maxAge: 1 * 60 * 1000, // 1 minute in milliseconds
   path: '/' // Cookie is available for all paths
 };
 
@@ -144,9 +144,29 @@ const login = asyncHandler(async (req, res) => {
 
   // Verify password
   if (await user.matchPassword(password)) {
-    // Generate token and set cookie
+    // Generate token
     const token = generateToken(user._id);
-    res.cookie('jwt', token, cookieOptions);
+
+    // Set cookie with more detailed options
+    res.cookie('jwt', token, {
+      httpOnly: true,
+      secure: false, // set to true in production
+      sameSite: 'lax',
+      maxAge: 1 * 60 * 1000, // 1 minute in milliseconds
+      path: '/'
+    });
+
+    console.log('Cookie being set:', {
+      name: 'jwt',
+      token: token,
+      options: {
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+      maxAge: 1 * 60 * 1000, // 1 minute in milliseconds
+      path: '/'
+      }
+    });
 
     // Fetch permissions for the user's role
     const rolePermissions = await RolePermission.find({ roleId: user.role_id._id })
@@ -174,8 +194,14 @@ const login = asyncHandler(async (req, res) => {
       permissions: permissions
     };
 
-    const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Login successful', userData);
-    return res.status(code).json({ code, data, message });
+    const { code, message, data } = getHandlerResponse(
+      true,
+      httpStatus.OK,
+      'Login successful',
+      userData
+    );
+
+    res.status(code).json({ code, message, data });
   } else {
     console.log('❌ Invalid password for email:', email);
     const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Invalid email or password', null);
@@ -187,19 +213,46 @@ const login = asyncHandler(async (req, res) => {
 // 🔹 @route   POST /api/auth/logout
 // 🔹 @access  Private
 const logout = asyncHandler(async (req, res) => {
-  // Clear the JWT cookie
+  // Clear the jwt cookie
   res.cookie('jwt', '', {
     httpOnly: true,
     expires: new Date(0), // Expire immediately
-    path: '/'
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict',
   });
 
-  const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Logged out successfully', null);
-  return res.status(code).json({ code, message, data });
+  const { code, message, data } = getHandlerResponse(
+    true,
+    httpStatus.OK,
+    'Logged out successfully',
+    null
+  );
+
+  res.status(code).json({ code, message, data });
+});
+
+const verifyAuth = asyncHandler(async (req, res) => {
+  // The protect middleware will have already verified the token
+  // and attached the user to req.user
+  const { code, message, data } = getHandlerResponse(
+    true,
+    httpStatus.OK,
+    'Token verified',
+    {
+      _id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+      role_id: req.user.role_id,
+      permissions: req.user.permissions,
+    }
+  );
+
+  res.status(code).json({ code, message, data });
 });
 
 module.exports = {
   register,
   login,
-  logout
+  logout,
+  verifyAuth
 };

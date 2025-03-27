@@ -35,8 +35,21 @@ router.get('/test-s3', async (req, res) => {
   }
 });
 
-// All routes are protected
+// Apply protect middleware to all routes in this router
 router.use(protect);
+
+// Add this debug route at the top of your users routes
+router.get('/debug', (req, res) => {
+  console.log('Debug Info:');
+  console.log('Cookies:', req.cookies);
+  console.log('Headers:', req.headers);
+  
+  res.json({
+    cookies: req.cookies,
+    cookieHeader: req.headers.cookie,
+    allHeaders: req.headers
+  });
+});
 
 // /api/users
 router.route('/')

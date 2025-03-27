@@ -12,7 +12,10 @@ const rolePermissionRoutes = require('./routes/rolePermissionRoutes');
 const productRoutes = require('./routes/productRoutes');
 const warehouseRoutes = require('./routes/warehouseRoutes');
 const searchRoutes = require('./routes/searchRoutes');
+const cartRoutes = require('./routes/cartRoutes');
+const orderRoutes = require('./routes/orderRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
+const cookieParser = require('cookie-parser');
 
 dotenv.config();
 const app = express();
@@ -31,6 +34,9 @@ app.use((req, res, next) => {
 // Body parser - Move before CORS
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Use cookie-parser middleware
+app.use(cookieParser());
 
 // CORS configuration
 const corsOptions = {
@@ -94,6 +100,8 @@ apiRouter.use('/role-permissions', rolePermissionRoutes);
 apiRouter.use('/products', productRoutes);
 apiRouter.use('/warehouses', warehouseRoutes);
 apiRouter.use('/search', searchRoutes);
+apiRouter.use('/cart', cartRoutes);
+apiRouter.use('/orders', orderRoutes);
 
 // Error handler
 app.use(errorHandler);
