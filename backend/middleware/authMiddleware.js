@@ -6,90 +6,74 @@ const { getHandlerResponse } = require('./responseMiddleware');
 const httpStatus = require('../Helper/http_status');
 
 const protect = asyncHandler(async (req, res, next) => {
-  console.log('=== Auth Middleware Debug ===');
-  console.log('Headers:', req.headers);
-  console.log('Cookies:', req.cookies);
-  console.log('Cookie Header:', req.headers.cookie);
-  
   let token;
 
-  // Try getting token from different sources
-  if (req.cookies?.jwt) {
-    token = req.cookies.jwt;
-    console.log('Token found in cookies');
-  } else if (req.headers.authorization?.startsWith('Bearer ')) {
-    token = req.headers.authorization.split(' ')[1];
-    console.log('Token found in Authorization header');
-  } else {
-    console.log('No token found');
-  }
+  // Get token from Authorization header
+  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+    try {
+      // Get token from header
+      token = req.headers.authorization.split(' ')[1];
 
-  if (!token) {
-    const { code, message, data } = getHandlerResponse(
-      false,
-      httpStatus.UNAUTHORIZED,
-      'Not authorized, no token found',
-      null
-    );
-    return res.status(code).json({ code, message, data });
-  }
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-  try {
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token verified successfully');
+      // Get user from token
+      req.user = await User.findById(decoded.id).select('-password');
 
-    // Get user from token with populated role_id
-    req.user = await User.findById(decoded.id)
-      .select('-password')
-      .populate('role_id', '_id name description isActive');
-    
-    console.log('User with populated role:', req.user);
-    
-    if (!req.user) {
-      throw new Error('User not found');
-    }
+      if (!req.user) {
+        const { code, message, data } = getHandlerResponse(
+          false, 
+          httpStatus.UNAUTHORIZED, 
+          'Not authorized, user not found', 
+          null
+        );
+        return res.status(code).json({ code, message, data });
+      }
 
-    // Check if user has a role assigned
-    if (!req.user.role_id) {
+      // Check if user has a role assigned
+      if (!req.user.role_id) {
+        const { code, message, data } = getHandlerResponse(
+          false, 
+          httpStatus.FORBIDDEN, 
+          'Not authorized - No role assigned', 
+          null
+        );
+        return res.status(code).json({ code, message, data });
+      }
+
+      try {
+        // Get permissions for the user's role
+        const rolePermissions = await RolePermission.find({ roleId: req.user.role_id._id })
+          .populate({
+            path: 'permissionId',
+            select: 'permission_id name title description sectionName'
+          });
+
+        // Add permissions to user object
+        req.user.permissions = rolePermissions.map(rp => rp.permissionId);
+      } catch (permError) {
+        console.error('Error fetching permissions:', permError);
+        req.user.permissions = [];
+      }
+
+      next();
+    } catch (error) {
+      console.error('Auth Error:', error);
       const { code, message, data } = getHandlerResponse(
         false, 
-        httpStatus.FORBIDDEN, 
-        'Not authorized - No role assigned', 
+        httpStatus.UNAUTHORIZED, 
+        'Not authorized, token failed', 
         null
       );
       return res.status(code).json({ code, message, data });
     }
+  }
 
-    try {
-      // Get permissions for the user's role
-      const rolePermissions = await RolePermission.find({ roleId: req.user.role_id._id })
-        .populate({
-          path: 'permissionId',
-          select: 'permission_id name title description sectionName'
-        });
-
-      // Add permissions to user object
-      req.user.permissions = rolePermissions.map(rp => rp.permissionId);
-    } catch (permError) {
-      console.error('Error fetching permissions:', permError);
-      // Don't throw error here, just log it and continue with empty permissions
-      req.user.permissions = [];
-    }
-
-    console.log('User authenticated successfully:', {
-      userId: req.user._id,
-      role: req.user.role_id.name,
-      permissionsCount: req.user.permissions.length
-    });
-
-    next();
-  } catch (error) {
-    console.error('Auth Error:', error);
+  if (!token) {
     const { code, message, data } = getHandlerResponse(
-      false,
-      httpStatus.UNAUTHORIZED,
-      'Not authorized, token failed',
+      false, 
+      httpStatus.UNAUTHORIZED, 
+      'Not authorized, no token', 
       null
     );
     return res.status(code).json({ code, message, data });

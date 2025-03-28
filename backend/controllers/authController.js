@@ -125,87 +125,60 @@ const register = asyncHandler(async (req, res) => {
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Please provide email and password', null);
-    return res.status(code).json({ code, data, message });
-  }
+  try {
+    // Find user
+    const user = await User.findOne({ email })
+      .select('+password')
+      .populate('role_id');
 
-  console.log('👤 Login attempt for email:', email);
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      const { code, message, data } = getHandlerResponse(
+        false,
+        httpStatus.UNAUTHORIZED,
+        'Invalid credentials',
+        null
+      );
+      return res.status(code).json({ code, message, data });
+    }
 
-  // Check for user email and populate role
-  const user = await User.findOne({ email })
-    .populate('role_id');
-
-  if (!user) {
-    console.log('❌ User not found:', email);
-    const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Invalid email or password', null);
-    return res.status(code).json({ code, data, message });
-  }
-
-  // Verify password
-  if (await user.matchPassword(password)) {
-    // Generate token
-    const token = generateToken(user._id);
-
-    // Set cookie with more detailed options
-    res.cookie('jwt', token, {
-      httpOnly: true,
-      secure: false, // set to true in production
-      sameSite: 'lax',
-      maxAge: 1 * 60 * 1000, // 1 minute in milliseconds
-      path: '/'
-    });
-
-    console.log('Cookie being set:', {
-      name: 'jwt',
-      token: token,
-      options: {
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-      maxAge: 1 * 60 * 1000, // 1 minute in milliseconds
-      path: '/'
-      }
-    });
-
-    // Fetch permissions for the user's role
+    // Get permissions
     const rolePermissions = await RolePermission.find({ roleId: user.role_id._id })
-      .populate({
-        path: 'permissionId',
-        select: 'permission_id name title description sectionName'
-      });
-
-    // Map permissions to a more readable format
+      .populate('permissionId');
+    
     const permissions = rolePermissions.map(rp => rp.permissionId);
 
-    console.log('✅ Login successful for user:', {
-      userId: user._id,
-      role: user.role_id,
-      permissionsCount: permissions.length
-    });
+    // Create token
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }
+    );
 
-    const userData = {
-      _id: user._id,
-      name: user.name,
-      email: user.email,
-      firstName: user.firstName,
-      lastName: user.lastName,
-      role_id: user.role_id,
-      permissions: permissions
-    };
+    // Remove password from response
+    const userResponse = user.toObject();
+    delete userResponse.password;
 
     const { code, message, data } = getHandlerResponse(
       true,
       httpStatus.OK,
       'Login successful',
-      userData
+      {
+        ...userResponse,
+        permissions,
+        token // Include token in response
+      }
     );
 
     res.status(code).json({ code, message, data });
-  } else {
-    console.log('❌ Invalid password for email:', email);
-    const { code, message, data } = getHandlerResponse(false, httpStatus.UNAUTHORIZED, 'Invalid email or password', null);
-    return res.status(code).json({ code, data, message });
+  } catch (error) {
+    console.error('Login Error:', error);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message,
+      null
+    );
+    res.status(code).json({ code, message, data });
   }
 });
 
@@ -213,21 +186,12 @@ const login = asyncHandler(async (req, res) => {
 // 🔹 @route   POST /api/auth/logout
 // 🔹 @access  Private
 const logout = asyncHandler(async (req, res) => {
-  // Clear the jwt cookie
-  res.cookie('jwt', '', {
-    httpOnly: true,
-    expires: new Date(0), // Expire immediately
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
-  });
-
   const { code, message, data } = getHandlerResponse(
     true,
     httpStatus.OK,
     'Logged out successfully',
     null
   );
-
   res.status(code).json({ code, message, data });
 });
 
