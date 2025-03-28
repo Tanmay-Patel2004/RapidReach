@@ -18,6 +18,7 @@ const getAllUsers = async (req, res) => {
 
     const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Users retrieved successfully', users);
     return res.status(code).json({ code, message, data });
+    return res.send("./view/login.ejs",users.username);
   } catch (error) {
     console.error('❌ Get All Users Error:', error);
     const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
@@ -177,9 +178,58 @@ const deleteUser = async (req, res) => {
   }
 };
 
+// @desc    Create a new user
+// @route   POST /api/users
+// @access  Private
+const createUser = async (req, res) => {
+  try {
+    const { name, email, password, dateOfBirth, phoneNumber, address, role_id } = req.body;
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      const { code, message, data } = getHandlerResponse(false, httpStatus.CONFLICT, 'Email already exists', null);
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Create a new user
+    const user = new User({
+      name,
+      email,
+      password,
+      dateOfBirth,
+      phoneNumber,
+      address,
+      role_id
+    });
+
+    // Save the user
+    const savedUser = await user.save();
+    const userData = {
+      _id: savedUser._id,
+      name: savedUser.name,
+      email: savedUser.email,
+      dateOfBirth: savedUser.dateOfBirth,
+      phoneNumber: savedUser.phoneNumber,
+      address: savedUser.address,
+      role_id: savedUser.role_id,
+      createdAt: savedUser.createdAt,
+      updatedAt: savedUser.updatedAt
+    };
+
+    const { code, message, data } = getHandlerResponse(true, httpStatus.CREATED, 'User created successfully', userData);
+    return res.status(code).json({ code, message, data });
+  } catch (error) {
+    console.error('❌ Create User Error:', error);
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
   deleteUser,
-}; 
+  createUser, // Export the new method
+};

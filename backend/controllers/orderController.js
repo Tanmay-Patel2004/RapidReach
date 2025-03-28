@@ -1,6 +1,7 @@
 const Order = require('../models/orderModel');
 const Product = require('../models/productModel');
 const Cart = require('../models/cartModel'); // Assuming a Cart model exists
+const Driver = require('../models/driverModel'); // Import Driver model
 const { getHandlerResponse } = require('../middleware/responseMiddleware');
 const httpStatus = require('../Helper/http_status');
 
@@ -71,7 +72,7 @@ const checkout = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, assignedDrivers } = req.body; // Added assignedDrivers to request body
+    const { status, assignedDrivers } = req.body;
 
     const order = await Order.findById(id);
     if (!order) {
@@ -81,9 +82,34 @@ const updateOrderStatus = async (req, res) => {
 
     order.status = status;
 
+    // Assign the order to the most active idle driver if status is "Ready for Pickup"
+    if (status === 'Ready for Pickup') {
+      const idleDriver = await Driver.findOne({ status: 'Idle' })
+        .sort({ activeTime: -1 }) // Sort by highest active time
+        .exec();
+
+      if (idleDriver) {
+        // Assign the driver to the order
+        order.assignedDrivers = [
+          {
+            driverId: idleDriver.user,
+            deliveryStatus: 'Pending',
+            deliveryTime: null
+          }
+        ];
+
+        // Update the driver's status to "Assigned"
+        idleDriver.status = 'Assigned';
+        await idleDriver.save();
+      } else {
+        const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'No idle drivers available', null);
+        return res.status(code).json({ code, message, data });
+      }
+    }
+
     // Update assigned drivers if provided
     if (assignedDrivers) {
-      order.assignedDrivers = assignedDrivers; // Replace or update assigned drivers
+      order.assignedDrivers = assignedDrivers;
     }
 
     await order.save();

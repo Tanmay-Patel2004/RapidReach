@@ -8,6 +8,7 @@ const {
   getUserById,
   updateUser,
   deleteUser,
+  createUser,
 } = require('../controllers/userController');
 const { PERMISSION_IDS } = require('../constants/permissions');
 
@@ -53,7 +54,8 @@ router.get('/debug', (req, res) => {
 
 // /api/users
 router.route('/')
-  .get(checkPermission(PERMISSION_IDS.READ_ALL_USERS), getAllUsers);
+  .get(checkPermission(PERMISSION_IDS.READ_ALL_USERS), getAllUsers)
+  .post(createUser);
 
 // /api/users/:id
 router.route('/:id')
@@ -61,4 +63,4 @@ router.route('/:id')
   .put(checkPermission(PERMISSION_IDS.EDIT_SINGLE_USER), uploadProfilePicture, updateUser)
   .delete(deleteUser);
 
-module.exports = router; 
+module.exports = router;

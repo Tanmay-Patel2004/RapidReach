@@ -16,6 +16,8 @@ const cartRoutes = require('./routes/cartRoutes');
 const orderRoutes = require('./routes/orderRoutes');
 const { errorHandler } = require('./middleware/errorMiddleware');
 const cookieParser = require('cookie-parser');
+const userActivityRoutes = require('./routes/userActivityRoutes'); // Import user activity routes
+const driverRoutes = require('./routes/driverRoutes'); // Import driver routes
 
 dotenv.config();
 const app = express();
@@ -102,6 +104,8 @@ apiRouter.use('/warehouses', warehouseRoutes);
 apiRouter.use('/search', searchRoutes);
 apiRouter.use('/cart', cartRoutes);
 apiRouter.use('/orders', orderRoutes);
+apiRouter.use('/user-activity', userActivityRoutes); // Register user activity routes
+apiRouter.use('/drivers', driverRoutes); // Register driver routes
 
 // Error handler
 app.use(errorHandler);
