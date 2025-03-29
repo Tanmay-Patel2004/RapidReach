@@ -1,337 +1,450 @@
-import { useState, useEffect } from "react";
-import { useSelector } from "react-redux";
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import {
   Container,
   Paper,
-  Typography,
-  Box,
-  Avatar,
   Grid,
-  Skeleton,
-  Alert,
-  Divider,
-  IconButton,
-  Modal,
-  TextField,
+  Typography,
+  Avatar,
   Button,
-  Stack,
-} from "@mui/material";
+  TextField,
+  Box,
+  Divider,
+  Alert,
+  CircularProgress,
+  IconButton,
+  Snackbar,
+} from '@mui/material';
 import {
-  Person as PersonIcon,
-  ArrowBack as ArrowBackIcon,
   Edit as EditIcon,
-  Close as CloseIcon,
-} from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
-import { selectUser } from "../store/slices/authSlice";
-import logger from "../utils/logger";
-
-const modalStyle = {
-  position: "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: { xs: "90%", sm: 500 },
-  bgcolor: "background.paper",
-  boxShadow: 24,
-  borderRadius: 2,
-  p: 4,
-};
+  Save as SaveIcon,
+  Cancel as CancelIcon,
+  PhotoCamera as PhotoCameraIcon,
+} from '@mui/icons-material';
+import { selectUser, selectAuthToken, updateUserProfile } from '../store/slices/authSlice';
+import logger from '../utils/logger';
 
 const ProfilePage = () => {
-  const navigate = useNavigate();
-  const currentUser = useSelector(selectUser);
-  const [userDetails, setUserDetails] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const user = useSelector(selectUser);
+  const token = useSelector(selectAuthToken);
+  const dispatch = useDispatch();
+  const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [openModal, setOpenModal] = useState(false);
-  const [editForm, setEditForm] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    dateOfBirth: "",
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+  
+  const [formData, setFormData] = useState({
+    name: user?.name || '',
+    email: user?.email || '',
+    phoneNumber: user?.phoneNumber || '',
+    dateOfBirth: user?.dateOfBirth?.split('T')[0] || '',
+    profilePicture: user?.profilePicture || '',
+    address: {
+      street: user?.address?.street || '',
+      unitNumber: user?.address?.unitNumber || '',
+      province: user?.address?.province || '',
+      country: user?.address?.country || '',
+      zipCode: user?.address?.zipCode || '',
+    }
   });
-  const [updateLoading, setUpdateLoading] = useState(false);
-  const [updateError, setUpdateError] = useState(null);
 
-  const roleMapping = {
-    "67bb9c77ee11822f1295c3e7": "Driver",
-    "67bb9c6aee11822f1295c3e3": "Customer",
-    "67bb9c89ee11822f1295c3eb": "Super Admin",
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const fetchUserDetails = async () => {
+  const handleImageUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+
+    try {
+      setLoading(true);
+      const response = await fetch('http://localhost:3000/api/users/upload-profile-picture', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
+        throw new Error('Failed to upload image');
+      }
+
+      const result = await response.json();
+      setFormData(prev => ({ ...prev, profilePicture: result.data.url }));
+      setSnackbar({
+        open: true,
+        message: 'Profile picture updated successfully',
+        severity: 'success'
+      });
+    } catch (err) {
+      setError(err.message);
+      logger.error('Profile picture upload error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchUserData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:3000/api/users/${user._id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
+        throw new Error('Failed to fetch user data');
+      }
+
+      const result = await response.json();
+      if (result.code === 200) {
+        const userData = result.data;
+        setFormData({
+          name: userData.name || '',
+          email: userData.email || '',
+          phoneNumber: userData.phoneNumber || '',
+          dateOfBirth: userData.dateOfBirth?.split('T')[0] || '',
+          profilePicture: userData.profilePicture || '',
+          address: {
+            street: userData.address?.street || '',
+            unitNumber: userData.address?.unitNumber || '',
+            province: userData.address?.province || '',
+            country: userData.address?.country || '',
+            zipCode: userData.address?.zipCode || '',
+          }
+        });
+      }
+    } catch (err) {
+      setError(err.message);
+      logger.error('Fetch user data error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(
-        `http://localhost:3000/api/users/${currentUser._id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-        }
-      );
+      const response = await fetch(`http://localhost:3000/api/users/${user._id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch user details");
+        if (response.status === 401) {
+          throw new Error('Session expired. Please login again.');
+        }
+        throw new Error('Failed to update profile');
       }
 
-      const data = await response.json();
-      setUserDetails(data);
-      setEditForm({
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: data.email,
-        dateOfBirth: data.dateOfBirth.split("T")[0],
-      });
+      const result = await response.json();
+      if (result.code === 200) {
+        dispatch(updateUserProfile(result.data));
+        setIsEditing(false);
+        setSnackbar({
+          open: true,
+          message: 'Profile updated successfully',
+          severity: 'success'
+        });
+      }
     } catch (err) {
       setError(err.message);
-      logger.error("Error fetching user details", { error: err.message });
+      logger.error('Profile update error:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (currentUser?._id) {
-      fetchUserDetails();
+    if (user?._id && token) {
+      fetchUserData();
     }
-  }, [currentUser?._id]);
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setUpdateLoading(true);
-    setUpdateError(null);
-
-    try {
-      const response = await fetch(
-        `http://localhost:3000/api/users/${currentUser._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-          body: JSON.stringify(editForm),
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to update profile");
-      }
-
-      await fetchUserDetails(); // Refresh user details
-      setOpenModal(false);
-      logger.info("Profile updated successfully");
-    } catch (err) {
-      setUpdateError(err.message);
-      logger.error("Error updating profile", { error: err.message });
-    } finally {
-      setUpdateLoading(false);
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "long",
-      day: "numeric",
-    });
-  };
-
-  if (loading) {
-    return (
-      <Container maxWidth="md" sx={{ mt: 4 }}>
-        <Paper elevation={3} sx={{ p: 4, position: "relative" }}>
-          <Skeleton variant="circular" width={80} height={80} />
-          <Skeleton variant="text" width={200} height={40} sx={{ mt: 2 }} />
-          <Skeleton variant="text" width={150} height={30} />
-          <Grid container spacing={3} sx={{ mt: 2 }}>
-            {[1, 2, 3, 4].map((item) => (
-              <Grid item xs={12} sm={6} key={item}>
-                <Skeleton variant="text" width="80%" height={20} />
-                <Skeleton variant="text" width="60%" height={20} />
-              </Grid>
-            ))}
-          </Grid>
-        </Paper>
-      </Container>
-    );
-  }
+  }, [user?._id, token]);
 
   return (
-    <Container maxWidth="md" sx={{ mt: 4 }}>
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-        </Alert>
-      )}
-      
-      <Paper 
-        elevation={3} 
-        sx={{ 
-          p: 4, 
-          position: "relative",
-          background: "linear-gradient(145deg, #ffffff 0%, #f4f4f4 100%)",
-        }}
-      >
-        <IconButton
-          onClick={() => navigate(-1)}
-          sx={{ position: "absolute", top: 16, left: 16 }}
-        >
-          <ArrowBackIcon />
-        </IconButton>
-
-        <IconButton
-          onClick={() => setOpenModal(true)}
-          sx={{ position: "absolute", top: 16, right: 16 }}
-        >
-          <EditIcon color="primary" />
-        </IconButton>
-
-        <Box sx={{ 
-          display: "flex", 
-          flexDirection: { xs: "column", sm: "row" },
-          alignItems: { xs: "center", sm: "flex-start" },
-          mb: 4 
-        }}>
-          <Avatar
-            sx={{
-              width: 100,
-              height: 100,
-              bgcolor: "primary.main",
-              boxShadow: 3,
-              mb: { xs: 2, sm: 0 },
-              mr: { sm: 3 }
-            }}
-          >
-            <PersonIcon sx={{ fontSize: 50 }} />
-          </Avatar>
-          
-          <Box sx={{ textAlign: { xs: "center", sm: "left" } }}>
-            <Typography variant="h4" gutterBottom>
-              {userDetails?.firstName} {userDetails?.lastName}
-            </Typography>
-            <Typography
-              variant="h6"
-              color="primary"
-              sx={{ fontWeight: "medium" }}
-            >
-              {roleMapping[userDetails?.role_id] || "User"}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Divider sx={{ my: 3 }} />
-
+    <Container maxWidth="md" sx={{ py: 4, mt: 8 }}>
+      <Paper elevation={3} sx={{ p: 4 }}>
         <Grid container spacing={4}>
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Email
+          {/* Profile Picture Section */}
+          <Grid item xs={12} md={4} sx={{ textAlign: 'center' }}>
+            <Box sx={{ position: 'relative', display: 'inline-block' }}>
+              <Avatar
+                src={formData.profilePicture}
+                alt={formData.name}
+                sx={{
+                  width: 200,
+                  height: 200,
+                  mb: 2,
+                  border: '4px solid',
+                  borderColor: 'primary.main',
+                }}
+              />
+              {isEditing && (
+                <input
+                  accept="image/*"
+                  type="file"
+                  id="profile-picture-input"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                />
+              )}
+              {isEditing && (
+                <label htmlFor="profile-picture-input">
+                  <IconButton
+                    component="span"
+                    sx={{
+                      position: 'absolute',
+                      bottom: 20,
+                      right: 0,
+                      bgcolor: 'primary.main',
+                      color: 'white',
+                      '&:hover': { bgcolor: 'primary.dark' },
+                    }}
+                  >
+                    <PhotoCameraIcon />
+                  </IconButton>
+                </label>
+              )}
+            </Box>
+            <Typography variant="h5" gutterBottom>
+              {user?.name}
             </Typography>
-            <Typography variant="body1" sx={{ mt: 1, fontWeight: "medium" }}>
-              {userDetails?.email}
+            <Typography variant="body2" color="text.secondary" gutterBottom>
+              {user?.role_id?.name?.toUpperCase() || 'Role not assigned'}
             </Typography>
           </Grid>
 
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Date of Birth
-            </Typography>
-            <Typography variant="body1" sx={{ mt: 1, fontWeight: "medium" }}>
-              {userDetails?.dateOfBirth
-                ? formatDate(userDetails.dateOfBirth)
-                : "Not provided"}
-            </Typography>
-          </Grid>
-
-          <Grid item xs={12} sm={6}>
-            <Typography variant="subtitle2" color="text.secondary">
-              Role
-            </Typography>
-            <Typography variant="body1" sx={{ mt: 1, fontWeight: "medium" }}>
-              {roleMapping[userDetails?.role_id] || "Unknown Role"}
-            </Typography>
-          </Grid>
-        </Grid>
-
-        {/* Edit Modal */}
-        <Modal
-          open={openModal}
-          onClose={() => setOpenModal(false)}
-          aria-labelledby="edit-profile-modal"
-        >
-          <Box sx={modalStyle}>
-            <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
-              <Typography variant="h6">Edit Profile</Typography>
-              <IconButton onClick={() => setOpenModal(false)} size="small">
-                <CloseIcon />
-              </IconButton>
+          {/* Profile Details Section */}
+          <Grid item xs={12} md={8}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
+              <Typography variant="h6">Profile Details</Typography>
+              {!isEditing ? (
+                <Button
+                  startIcon={<EditIcon />}
+                  onClick={() => setIsEditing(true)}
+                  variant="outlined"
+                >
+                  Edit Profile
+                </Button>
+              ) : (
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  <Button
+                    startIcon={<SaveIcon />}
+                    onClick={handleSubmit}
+                    variant="contained"
+                    disabled={loading}
+                  >
+                    Save
+                  </Button>
+                  <Button
+                    startIcon={<CancelIcon />}
+                    onClick={() => {
+                      setIsEditing(false);
+                      setFormData({
+                        name: user?.name || '',
+                        email: user?.email || '',
+                        phoneNumber: user?.phoneNumber || '',
+                        dateOfBirth: user?.dateOfBirth?.split('T')[0] || '',
+                        profilePicture: user?.profilePicture || '',
+                        address: {
+                          street: user?.address?.street || '',
+                          unitNumber: user?.address?.unitNumber || '',
+                          province: user?.address?.province || '',
+                          country: user?.address?.country || '',
+                          zipCode: user?.address?.zipCode || '',
+                        }
+                      });
+                    }}
+                    variant="outlined"
+                    color="error"
+                  >
+                    Cancel
+                  </Button>
+                </Box>
+              )}
             </Box>
 
-            {updateError && (
-              <Alert severity="error" sx={{ mb: 2 }}>
-                {updateError}
+            <Divider sx={{ mb: 3 }} />
+
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
               </Alert>
             )}
 
-            <form onSubmit={handleEditSubmit}>
-              <Stack spacing={2}>
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
                 <TextField
                   fullWidth
-                  label="First Name"
-                  value={editForm.firstName}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, firstName: e.target.value })
-                  }
-                  required
+                  label="Full Name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
                 />
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Last Name"
-                  value={editForm.lastName}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, lastName: e.target.value })
-                  }
-                  required
-                />
-                <TextField
-                  fullWidth
-                  type="email"
                   label="Email"
-                  value={editForm.email}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, email: e.target.value })
-                  }
-                  required
+                  name="email"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  disabled={true} // Email should not be editable
+                  type="email"
                 />
+              </Grid>
+              <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  type="date"
-                  label="Date of Birth"
-                  value={editForm.dateOfBirth}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, dateOfBirth: e.target.value })
-                  }
-                  InputLabelProps={{ shrink: true }}
-                  required
+                  label="Phone Number"
+                  name="phoneNumber"
+                  value={formData.phoneNumber}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
                 />
-                <Button
-                  type="submit"
-                  variant="contained"
-                  disabled={updateLoading}
-                  sx={{ mt: 2 }}
-                >
-                  {updateLoading ? "Saving..." : "Save Changes"}
-                </Button>
-              </Stack>
-            </form>
-          </Box>
-        </Modal>
+              </Grid>
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Address Details
+                </Typography>
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Street"
+                  name="address.street"
+                  value={formData.address.street}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    address: { ...prev.address, street: e.target.value }
+                  }))}
+                  disabled={!isEditing}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Unit Number"
+                  name="address.unitNumber"
+                  value={formData.address.unitNumber}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    address: { ...prev.address, unitNumber: e.target.value }
+                  }))}
+                  disabled={!isEditing}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Province"
+                  name="address.province"
+                  value={formData.address.province}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    address: { ...prev.address, province: e.target.value }
+                  }))}
+                  disabled={!isEditing}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Country"
+                  name="address.country"
+                  value={formData.address.country}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    address: { ...prev.address, country: e.target.value }
+                  }))}
+                  disabled={!isEditing}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Zip Code"
+                  name="address.zipCode"
+                  value={formData.address.zipCode}
+                  onChange={(e) => setFormData(prev => ({
+                    ...prev,
+                    address: { ...prev.address, zipCode: e.target.value }
+                  }))}
+                  disabled={!isEditing}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Date of Birth"
+                  name="dateOfBirth"
+                  type="date"
+                  value={formData.dateOfBirth}
+                  onChange={handleInputChange}
+                  disabled={!isEditing}
+                  InputLabelProps={{ shrink: true }}
+                />
+              </Grid>
+            </Grid>
+          </Grid>
+        </Grid>
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+      >
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled"
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
+
+      {loading && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: 'rgba(0, 0, 0, 0.5)',
+            zIndex: 9999,
+          }}
+        >
+          <CircularProgress />
+        </Box>
+      )}
     </Container>
   );
 };

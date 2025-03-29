@@ -26,8 +26,13 @@ import {
   Timeline,
   NavigateNext,
 } from '@mui/icons-material';
+import { useSelector } from 'react-redux';
+import { selectUser } from '../../store/slices/authSlice';
 
 const CustomerDashboard = () => {
+  const user = useSelector(selectUser);
+  console.log('User in dashboard:', user); // Add this to debug
+
   // Static data for demonstration
   const recentOrders = [
     {
@@ -111,9 +116,8 @@ const CustomerDashboard = () => {
   return (
     <Box sx={{ py: 4, backgroundColor: 'background.default' }}>
       <Container maxWidth="xl">
-        {/* Welcome Section */}
         <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
-          Welcome back, John! 👋
+          Welcome back, {user?.name || 'Guest'}! 👋
         </Typography>
 
         {/* Stats Overview */}

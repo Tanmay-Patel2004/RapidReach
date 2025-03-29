@@ -25,6 +25,7 @@ import { api } from './utils/api';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrdersPage from './pages/OrdersPage';
+import { AuthProvider } from './contexts/AuthContext';
 
 function App() {
   const dispatch = useDispatch();
@@ -104,119 +105,121 @@ function App() {
   }
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      <Navbar />
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          width: '100%',
-          ml: { sm: '250px' },
-          backgroundColor: '#f5f5f5',
-          minHeight: '100vh',
-          p: 0,
-          overflowX: 'hidden',
-        }}
-      >
-        <Toolbar />
-        <Routes>
-          <Route
-            path="/dashboard"
-            element={<ProtectedRoute>{DashboardComponent}</ProtectedRoute>}
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <ProfilePage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/products"
-            element={
-              <ProtectedRoute>
-                <ProductsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/products/:id"
-            element={
-              <ProtectedRoute>
-                <ProductDetailsPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/users"
-            element={
-              <ProtectedRoute>
-                <SectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/roles"
-            element={
-              <ProtectedRoute>
-                <SectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/permissions"
-            element={
-              <ProtectedRoute>
-                <SectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/permission-relations"
-            element={
-              <ProtectedRoute>
-                <SectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/warehouse"
-            element={
-              <ProtectedRoute>
-                <SectionPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/cart"
-            element={
-              <ProtectedRoute>
-                <CartPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/checkout"
-            element={
-              <ProtectedRoute>
-                <CheckoutPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/orders"
-            element={
-              <ProtectedRoute>
-                <OrdersPage />
-              </ProtectedRoute>
-            }
-          />
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
+    <AuthProvider>
+      <Box sx={{ display: 'flex' }}>
+        <Navbar />
+        <Box
+          component="main"
+          sx={{
+            flexGrow: 1,
+            width: '100%',
+            ml: { sm: '250px' },
+            backgroundColor: '#f5f5f5',
+            minHeight: '100vh',
+            p: 0,
+            overflowX: 'hidden',
+          }}
+        >
+          <Toolbar />
+          <Routes>
+            <Route
+              path="/dashboard"
+              element={<ProtectedRoute>{DashboardComponent}</ProtectedRoute>}
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <ProfilePage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products"
+              element={
+                <ProtectedRoute>
+                  <ProductsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products/:id"
+              element={
+                <ProtectedRoute>
+                  <ProductDetailsPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/users"
+              element={
+                <ProtectedRoute>
+                  <SectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/roles"
+              element={
+                <ProtectedRoute>
+                  <SectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/permissions"
+              element={
+                <ProtectedRoute>
+                  <SectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/permission-relations"
+              element={
+                <ProtectedRoute>
+                  <SectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/warehouse"
+              element={
+                <ProtectedRoute>
+                  <SectionPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cart"
+              element={
+                <ProtectedRoute>
+                  <CartPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/checkout"
+              element={
+                <ProtectedRoute>
+                  <CheckoutPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                <ProtectedRoute>
+                  <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Box>
       </Box>
-    </Box>
+    </AuthProvider>
   );
 }
 

@@ -36,6 +36,8 @@ import {
   Logout as LogoutIcon,
   ShoppingBag as OrderIcon,
   AccountCircle,
+  Person as PersonIcon,
+  Dashboard,
 } from '@mui/icons-material';
 import {logout , selectRoleName , selectUser } from '../../store/slices/authSlice';
 import logger from '../../utils/logger';
@@ -75,6 +77,7 @@ const Navbar = () => {
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
           { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
+          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
         ];
       case 'customer':
         return [
@@ -82,6 +85,7 @@ const Navbar = () => {
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
           { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
+          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
         ];
       case 'warehouse worker':
         return [
@@ -89,12 +93,14 @@ const Navbar = () => {
           { title: 'Inventory', path: '/inventory', icon: <Inventory /> },
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
+          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
         ];
       case 'driver':
         return [
           { title: 'Ready Orders', path: '/ready-orders', icon: <LocalShipping /> },
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
+          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
         ];
       default:
         return [];
@@ -178,21 +184,7 @@ const Navbar = () => {
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           {/* Logo/Brand - Always visible */}
-          <Typography
-            variant="h6"
-            noWrap
-            component="div"
-            sx={{ 
-              flexGrow: 0,
-              display: 'flex',
-              alignItems: 'center',
-              cursor: 'pointer',
-              mr: 4
-            }}
-            onClick={() => navigate('/')}
-          >
-            Your Logo
-          </Typography>
+        
 
           {/* Main Navigation Links - Hide on mobile */}
           <Box sx={{ 
@@ -200,6 +192,9 @@ const Navbar = () => {
             display: { xs: 'none', md: 'flex' },
             gap: 2
           }}>
+            <MenuItem onClick={() => navigate('/dashboard')}>
+              Dashboard
+            </MenuItem>
             <MenuItem onClick={() => navigate('/products')}>
               Products
             </MenuItem>
@@ -281,6 +276,9 @@ const Navbar = () => {
             onClose={handleMenuClose}
             sx={{ display: { xs: 'block', md: 'none' } }}
           >
+            <MenuItem onClick={() => { navigate('/dashboard'); handleMenuClose(); }}>
+              Dashboard
+            </MenuItem>
             <MenuItem onClick={() => { navigate('/products'); handleMenuClose(); }}>
               Products
             </MenuItem>
@@ -306,15 +304,37 @@ const Navbar = () => {
                 overflow: 'visible',
                 filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
                 mt: 1.5,
+                minWidth: 200,
+                '& .MuiAvatar-root': {
+                  width: 32,
+                  height: 32,
+                  ml: -0.5,
+                  mr: 1,
+                },
               },
             }}
             transformOrigin={{ horizontal: 'right', vertical: 'top' }}
             anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
           >
+            <MenuItem sx={{ py: 1 }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+                <Typography variant="subtitle1">{user?.name}</Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {user?.email}
+                </Typography>
+              </Box>
+            </MenuItem>
+            <Divider />
             <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+              <ListItemIcon>
+                <PersonIcon fontSize="small" />
+              </ListItemIcon>
               Profile
             </MenuItem>
             <MenuItem onClick={handleLogout}>
+              <ListItemIcon>
+                <LogoutIcon fontSize="small" />
+              </ListItemIcon>
               Logout
             </MenuItem>
           </Menu>
