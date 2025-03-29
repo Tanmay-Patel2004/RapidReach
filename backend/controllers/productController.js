@@ -362,6 +362,45 @@ const getProductsByCategory = async (req, res) => {
   }
 };
 
+// @desc    Update product stock
+// @route   PUT /api/products/update-stock
+// @access  Private
+const updateProductStock = async (req, res) => {
+  try {
+    const { items } = req.body;
+
+    // Update each product's stock
+    const updatePromises = items.map(async (item) => {
+      const product = await Product.findById(item.productId);
+      if (!product) {
+        throw new Error(`Product not found: ${item.productId}`);
+      }
+
+      // Decrease the stock quantity
+      product.stockQuantity -= item.quantity;
+      
+      // Validate stock doesn't go negative
+      if (product.stockQuantity < 0) {
+        throw new Error(`Insufficient stock for product: ${product.name}`);
+      }
+
+      return product.save();
+    });
+
+    await Promise.all(updatePromises);
+
+    res.status(200).json({
+      code: 200,
+      message: 'Product stock updated successfully'
+    });
+  } catch (error) {
+    res.status(400).json({
+      code: 400,
+      message: error.message
+    });
+  }
+};
+
 module.exports = {
   getAllProducts,
   getProductById,
@@ -371,5 +410,6 @@ module.exports = {
   deleteProductImage,
   deleteProductVideo,
   getProductsByWarehouse,
-  getProductsByCategory
+  getProductsByCategory,
+  updateProductStock
 }; 

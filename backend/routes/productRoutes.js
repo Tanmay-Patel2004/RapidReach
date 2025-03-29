@@ -11,7 +11,8 @@ const {
   deleteProductImage,
   deleteProductVideo,
   getProductsByWarehouse,
-  getProductsByCategory
+  getProductsByCategory,
+  updateProductStock
 } = require('../controllers/productController');
 
 // All routes are protected
@@ -43,5 +44,7 @@ router.route('/:id/images/:imageUrl')
 // /api/products/:id/video
 router.route('/:id/video')
   .delete(deleteProductVideo);
+
+router.put('/update-stock', updateProductStock);
 
 module.exports = router; 

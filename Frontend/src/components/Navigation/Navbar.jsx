@@ -19,6 +19,7 @@ import {
   ListItemIcon,
   ListItemText,
   Divider,
+  Badge,
 } from '@mui/material';
 import {
   Menu as MenuIcon,
@@ -33,9 +34,12 @@ import {
   LocalShipping,
   Store,
   Logout as LogoutIcon,
+  ShoppingBag as OrderIcon,
+  AccountCircle,
 } from '@mui/icons-material';
 import {logout , selectRoleName , selectUser } from '../../store/slices/authSlice';
 import logger from '../../utils/logger';
+import { selectCartItems } from '../../store/slices/cartSlice';
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -43,8 +47,17 @@ const Navbar = () => {
   const roleName = useSelector(selectRoleName);
   const user = useSelector(selectUser);
   const dispatch = useDispatch();
-  const [anchorElUser, setAnchorElUser] = useState(null);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const cartItems = useSelector(selectCartItems);
+  
+  const isMobileMenuOpen = Boolean(mobileMenuAnchor);
+  const isUserMenuOpen = Boolean(userMenuAnchor);
+  const userMenuId = 'primary-user-account-menu';
+  const mobileMenuId = 'primary-mobile-menu';
+
+  // Calculate total items in cart
+  const cartItemCount = cartItems?.items?.length || 0;
 
   // Menu items based on role
   const getMenuItems = () => {
@@ -61,16 +74,18 @@ const Navbar = () => {
           { title: 'Warehouse', path: '/warehouse', icon: <Warehouse /> },
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
+          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
         ];
       case 'customer':
         return [
           { title: 'Products', path: '/products', icon: <Store /> },
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
+          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
         ];
       case 'warehouse worker':
         return [
-          { title: 'Orders', path: '/orders', icon: <ShoppingCart /> },
+          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
           { title: 'Inventory', path: '/inventory', icon: <Inventory /> },
           { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
@@ -88,16 +103,17 @@ const Navbar = () => {
 
   const menuItems = getMenuItems();
 
-  const handleOpenUserMenu = (event) => {
-    setAnchorElUser(event.currentTarget);
+  const handleMobileMenuOpen = (event) => {
+    setMobileMenuAnchor(event.currentTarget);
   };
 
-  const handleCloseUserMenu = () => {
-    setAnchorElUser(null);
+  const handleUserMenuOpen = (event) => {
+    setUserMenuAnchor(event.currentTarget);
   };
 
-  const handleDrawerToggle = () => {
-    setMobileOpen(!mobileOpen);
+  const handleMenuClose = () => {
+    setMobileMenuAnchor(null);
+    setUserMenuAnchor(null);
   };
 
   const handleLogout = async () => {
@@ -145,7 +161,7 @@ const Navbar = () => {
             key={item.title}
             onClick={() => {
               navigate(item.path);
-              setMobileOpen(false);
+              handleMenuClose();
             }}
             selected={location.pathname === item.path}
           >
@@ -158,100 +174,153 @@ const Navbar = () => {
   );
 
   return (
-    <>
-      <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
-        <Container maxWidth="xl">
-          <Toolbar disableGutters>
+    <AppBar position="fixed">
+      <Container maxWidth="xl">
+        <Toolbar disableGutters>
+          {/* Logo/Brand - Always visible */}
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ 
+              flexGrow: 0,
+              display: 'flex',
+              alignItems: 'center',
+              cursor: 'pointer',
+              mr: 4
+            }}
+            onClick={() => navigate('/')}
+          >
+            Your Logo
+          </Typography>
+
+          {/* Main Navigation Links - Hide on mobile */}
+          <Box sx={{ 
+            flexGrow: 1,
+            display: { xs: 'none', md: 'flex' },
+            gap: 2
+          }}>
+            <MenuItem onClick={() => navigate('/products')}>
+              Products
+            </MenuItem>
+            <MenuItem onClick={() => navigate('/orders')}>
+              Orders
+            </MenuItem>
+            {/* Add other navigation items here */}
+          </Box>
+
+          {/* Mobile Menu Button - Show only on mobile */}
+          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
             <IconButton
+              size="large"
+              aria-label="show more"
+              aria-controls={mobileMenuId}
+              aria-haspopup="true"
+              onClick={handleMobileMenuOpen}
               color="inherit"
-              aria-label="open drawer"
-              edge="start"
-              onClick={handleDrawerToggle}
-              sx={{ mr: 2, display: { sm: 'none' } }}
             >
               <MenuIcon />
             </IconButton>
-            
-            <Typography
-              variant="h6"
-              noWrap
-              component="div"
-              sx={{ flexGrow: 1, display: { xs: 'none', sm: 'block' } }}
+          </Box>
+
+          {/* Right-side Icons */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            gap: 2
+          }}>
+            {/* Cart Icon */}
+            <IconButton 
+              color="inherit" 
+              onClick={() => navigate('/cart')}
             >
-              Rapid Reach
-            </Typography>
-
-            <Box sx={{ flexGrow: 0 }}>
-              <Tooltip title="Open settings">
-                <IconButton onClick={handleOpenUserMenu} sx={{ p: 0 }}>
-                  <Avatar alt={user?.firstName} src="/static/images/avatar/2.jpg" />
-                </IconButton>
-              </Tooltip>
-              <Menu
-                sx={{ mt: '45px' }}
-                id="menu-appbar"
-                anchorEl={anchorElUser}
-                anchorOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
+              <Badge 
+                badgeContent={cartItems?.items?.length || 0} 
+                color="error"
+                sx={{
+                  '& .MuiBadge-badge': {
+                    right: -3,
+                    top: 3,
+                  }
                 }}
-                keepMounted
-                transformOrigin={{
-                  vertical: 'top',
-                  horizontal: 'right',
-                }}
-                open={Boolean(anchorElUser)}
-                onClose={handleCloseUserMenu}
               >
-                <MenuItem onClick={() => { navigate('/profile'); handleCloseUserMenu(); }}>
-                  <ListItemIcon>
-                    <Person fontSize="small" />
-                  </ListItemIcon>
-                  <Typography textAlign="center">Profile</Typography>
-                </MenuItem>
-                <Divider />
-                <MenuItem onClick={() => { 
-                  handleLogout(); 
-                  handleCloseUserMenu(); 
-                }}>
-                  <ListItemIcon>
-                    <LogoutIcon fontSize="small" />
-                  </ListItemIcon>
-                  <Typography textAlign="center" color="error">Logout</Typography>
-                </MenuItem>
-              </Menu>
-            </Box>
-          </Toolbar>
-        </Container>
-      </AppBar>
+                <ShoppingCart />
+              </Badge>
+            </IconButton>
 
-      <Box component="nav">
-        <Drawer
-          variant="temporary"
-          open={mobileOpen}
-          onClose={handleDrawerToggle}
-          ModalProps={{
-            keepMounted: true, // Better open performance on mobile.
-          }}
-          sx={{
-            display: { xs: 'block', sm: 'none' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 250 },
-          }}
-        >
-          {drawer}
-        </Drawer>
-        <Drawer
-          variant="permanent"
-          sx={{
-            display: { xs: 'none', sm: 'block' },
-            '& .MuiDrawer-paper': { boxSizing: 'border-box', width: 250, marginTop: '64px' },
-          }}
-          open
-        >
-          {drawer}
-        </Drawer>
-      </Box>
-    </>
+            {/* User Menu */}
+            <Box>
+              <IconButton
+                onClick={handleUserMenuOpen}
+                size="large"
+                edge="end"
+                aria-label="account of current user"
+                aria-controls={userMenuId}
+                aria-haspopup="true"
+                color="inherit"
+              >
+                {user?.profilePicture ? (
+                  <Avatar 
+                    src={user.profilePicture} 
+                    alt={user.name}
+                    sx={{ width: 32, height: 32 }}
+                  />
+                ) : (
+                  <AccountCircle />
+                )}
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* Mobile Menu */}
+          <Menu
+            anchorEl={mobileMenuAnchor}
+            id={mobileMenuId}
+            keepMounted
+            open={isMobileMenuOpen}
+            onClose={handleMenuClose}
+            sx={{ display: { xs: 'block', md: 'none' } }}
+          >
+            <MenuItem onClick={() => { navigate('/products'); handleMenuClose(); }}>
+              Products
+            </MenuItem>
+            <MenuItem onClick={() => { navigate('/orders'); handleMenuClose(); }}>
+              Orders
+            </MenuItem>
+            <MenuItem onClick={() => { navigate('/cart'); handleMenuClose(); }}>
+              Cart
+            </MenuItem>
+            {/* Add other mobile menu items here */}
+          </Menu>
+
+          {/* User Menu */}
+          <Menu
+            anchorEl={userMenuAnchor}
+            id={userMenuId}
+            keepMounted
+            open={isUserMenuOpen}
+            onClose={handleMenuClose}
+            PaperProps={{
+              elevation: 0,
+              sx: {
+                overflow: 'visible',
+                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                mt: 1.5,
+              },
+            }}
+            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+          >
+            <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+              Profile
+            </MenuItem>
+            <MenuItem onClick={handleLogout}>
+              Logout
+            </MenuItem>
+          </Menu>
+        </Toolbar>
+      </Container>
+    </AppBar>
   );
 };
 

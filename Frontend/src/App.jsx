@@ -22,6 +22,9 @@ import {
 import SectionPage from './components/common/SectionPage';
 import { getStoredAuthState } from './middleware/authMiddleware';
 import { api } from './utils/api';
+import CartPage from './pages/CartPage';
+import CheckoutPage from './pages/CheckoutPage';
+import OrdersPage from './pages/OrdersPage';
 
 function App() {
   const dispatch = useDispatch();
@@ -182,6 +185,30 @@ function App() {
             element={
               <ProtectedRoute>
                 <SectionPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cart"
+            element={
+              <ProtectedRoute>
+                <CartPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/checkout"
+            element={
+              <ProtectedRoute>
+                <CheckoutPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <OrdersPage />
               </ProtectedRoute>
             }
           />

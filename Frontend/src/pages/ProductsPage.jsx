@@ -24,6 +24,7 @@ import {
   Paper,
   Button,
   Divider,
+  Snackbar,
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -31,8 +32,9 @@ import {
   Close as CloseIcon,
   ShoppingCart as CartIcon,
 } from '@mui/icons-material';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectAuthToken } from '../store/slices/authSlice';
+import { setCartItems, selectCartItems } from '../store/slices/cartSlice';
 import logger from '../utils/logger';
 import LowStockIndicator from '../components/LowStockIndicator';
 
@@ -42,6 +44,7 @@ const ProductsPage = () => {
   const token = useSelector(selectAuthToken);
   console.log(token); 
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -52,6 +55,12 @@ const ProductsPage = () => {
   const [priceRange, setPriceRange] = useState('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState({});
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
+  const cartItems = useSelector(selectCartItems);
 
   const fetchProducts = async () => {
     try {
@@ -124,6 +133,49 @@ const ProductsPage = () => {
       
       return { ...prev, [productId]: newIndex };
     });
+  };
+
+  const isProductInCart = (productId) => {
+    return cartItems?.items?.some(item => 
+      item.productId._id === productId || item.productId === productId
+    );
+  };
+
+  const handleAddToCart = async (productId, event) => {
+    event.stopPropagation(); // Prevent navigation to product details
+    try {
+      const response = await fetch('http://localhost:3000/api/cart', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          productId,
+          quantity: 1,
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.code === 200) {
+        dispatch(setCartItems(result.data));
+        setSnackbar({
+          open: true,
+          message: 'Item added to cart successfully',
+          severity: 'success'
+        });
+      } else {
+        throw new Error(result.message || 'Failed to add item to cart');
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.message,
+        severity: 'error'
+      });
+      logger.error('Error adding item to cart', { error: err.message });
+    }
   };
 
   const FilterDrawer = () => (
@@ -398,11 +450,55 @@ const ProductsPage = () => {
                       <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
                         SKU: {product.sku}
                       </Typography>
-                      <LowStockIndicator 
-                        stockQuantity={product.stockQuantity} 
-                        unit={product.unit} 
-                        variant="text"
-                      />
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          color: product.stockQuantity > 0 
+                            ? product.stockQuantity <= 5 
+                              ? 'warning.main' 
+                              : 'success.main'
+                            : 'error.main',
+                          fontWeight: 500,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.5
+                        }}
+                      >
+                        {product.stockQuantity > 0 ? (
+                          <>
+                            Current Stock: {product.stockQuantity} {product.unit}
+                            {product.stockQuantity <= 5 && (
+                              <Typography 
+                                component="span" 
+                                variant="caption" 
+                                sx={{ 
+                                  color: 'warning.main',
+                                  backgroundColor: 'warning.lighter',
+                                  px: 1,
+                                  py: 0.5,
+                                  borderRadius: 1,
+                                  ml: 1
+                                }}
+                              >
+                                Low Stock
+                              </Typography>
+                            )}
+                          </>
+                        ) : (
+                          <Typography 
+                            component="span" 
+                            sx={{ 
+                              color: 'error.main',
+                              backgroundColor: 'error.lighter',
+                              px: 1,
+                              py: 0.5,
+                              borderRadius: 1
+                            }}
+                          >
+                            Out of Stock
+                          </Typography>
+                        )}
+                      </Typography>
                     </Box>
 
                     {product.specifications && product.specifications.length > 0 && (
@@ -430,17 +526,27 @@ const ProductsPage = () => {
                   <Box sx={{ p: 2 }}>
                     <Button
                       fullWidth
-                      variant="contained"
+                      variant={isProductInCart(product._id) ? "outlined" : "contained"}
                       startIcon={<CartIcon />}
                       disabled={product.stockQuantity === 0}
+                      onClick={(e) => handleAddToCart(product._id, e)}
                       sx={{
-                        bgcolor: 'primary.main',
+                        bgcolor: isProductInCart(product._id) ? 'transparent' : 'primary.main',
+                        color: isProductInCart(product._id) ? 'primary.main' : 'white',
+                        borderColor: 'primary.main',
                         '&:hover': {
-                          bgcolor: 'primary.dark',
+                          bgcolor: isProductInCart(product._id) ? 'primary.lighter' : 'primary.dark',
                         },
+                        transition: 'all 0.3s ease',
+                        position: 'relative',
                       }}
                     >
-                      {product.stockQuantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                      {product.stockQuantity === 0 
+                        ? 'Out of Stock' 
+                        : isProductInCart(product._id) 
+                          ? 'In Cart' 
+                          : 'Add to Cart'
+                      }
                     </Button>
                   </Box>
                 </Card>
@@ -458,6 +564,22 @@ const ProductsPage = () => {
         </Box>
 
         <FilterDrawer />
+
+        <Snackbar
+          open={snackbar.open}
+          autoHideDuration={3000}
+          onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+        >
+          <Alert 
+            onClose={() => setSnackbar(prev => ({ ...prev, open: false }))} 
+            severity={snackbar.severity}
+            variant="filled"
+            sx={{ width: '100%' }}
+          >
+            {snackbar.message}
+          </Alert>
+        </Snackbar>
       </Container>
     </Box>
   );
