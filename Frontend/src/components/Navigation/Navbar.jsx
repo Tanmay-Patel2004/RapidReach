@@ -63,44 +63,32 @@ const Navbar = () => {
 
   // Menu items based on role
   const getMenuItems = () => {
-    console.log(user);
-    console.log(roleName);
-   
     switch (roleName.toLowerCase()) {
       case 'super admin':
         return [
+          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
           { title: 'Users', path: '/users', icon: <People /> },
           { title: 'Roles', path: '/roles', icon: <AdminPanelSettings /> },
           { title: 'Permissions', path: '/permissions', icon: <Security /> },
-          { title: 'Permission Relations', path: '/permission-relations', icon: <Security /> },
           { title: 'Warehouse', path: '/warehouse', icon: <Warehouse /> },
-          { title: 'My Profile', path: '/profile', icon: <Person /> },
           { title: 'Settings', path: '/settings', icon: <Settings /> },
           { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
-          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
         ];
       case 'customer':
         return [
-          { title: 'Products', path: '/products', icon: <Store /> },
-          { title: 'My Profile', path: '/profile', icon: <Person /> },
-          { title: 'Settings', path: '/settings', icon: <Settings /> },
-          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
           { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
+          { title: 'Products', path: '/products', icon: <Store /> },
+          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
         ];
       case 'warehouse worker':
         return [
-          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
-          { title: 'Inventory', path: '/inventory', icon: <Inventory /> },
-          { title: 'My Profile', path: '/profile', icon: <Person /> },
-          { title: 'Settings', path: '/settings', icon: <Settings /> },
           { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
+          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
         ];
       case 'driver':
         return [
-          { title: 'Ready Orders', path: '/ready-orders', icon: <LocalShipping /> },
-          { title: 'My Profile', path: '/profile', icon: <Person /> },
-          { title: 'Settings', path: '/settings', icon: <Settings /> },
           { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
+          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
         ];
       default:
         return [];
@@ -184,7 +172,14 @@ const Navbar = () => {
       <Container maxWidth="xl">
         <Toolbar disableGutters>
           {/* Logo/Brand - Always visible */}
-        
+          <Typography
+            variant="h6"
+            noWrap
+            component="div"
+            sx={{ display: { xs: 'none', md: 'flex' }, mr: 2 }}
+          >
+            Rapid Reach
+          </Typography>
 
           {/* Main Navigation Links - Hide on mobile */}
           <Box sx={{ 
@@ -192,16 +187,15 @@ const Navbar = () => {
             display: { xs: 'none', md: 'flex' },
             gap: 2
           }}>
-            <MenuItem onClick={() => navigate('/dashboard')}>
-              Dashboard
-            </MenuItem>
-            <MenuItem onClick={() => navigate('/products')}>
-              Products
-            </MenuItem>
-            <MenuItem onClick={() => navigate('/orders')}>
-              Orders
-            </MenuItem>
-            {/* Add other navigation items here */}
+            {menuItems.map((item) => (
+              <MenuItem 
+                key={item.title}
+                onClick={() => navigate(item.path)}
+                selected={location.pathname === item.path}
+              >
+                {item.title}
+              </MenuItem>
+            ))}
           </Box>
 
           {/* Mobile Menu Button - Show only on mobile */}
@@ -276,19 +270,18 @@ const Navbar = () => {
             onClose={handleMenuClose}
             sx={{ display: { xs: 'block', md: 'none' } }}
           >
-            <MenuItem onClick={() => { navigate('/dashboard'); handleMenuClose(); }}>
-              Dashboard
-            </MenuItem>
-            <MenuItem onClick={() => { navigate('/products'); handleMenuClose(); }}>
-              Products
-            </MenuItem>
-            <MenuItem onClick={() => { navigate('/orders'); handleMenuClose(); }}>
-              Orders
-            </MenuItem>
-            <MenuItem onClick={() => { navigate('/cart'); handleMenuClose(); }}>
-              Cart
-            </MenuItem>
-            {/* Add other mobile menu items here */}
+            {menuItems.map((item) => (
+              <MenuItem 
+                key={item.title}
+                onClick={() => { 
+                  navigate(item.path); 
+                  handleMenuClose(); 
+                }}
+              >
+                <ListItemIcon>{item.icon}</ListItemIcon>
+                <ListItemText primary={item.title} />
+              </MenuItem>
+            ))}
           </Menu>
 
           {/* User Menu */}
