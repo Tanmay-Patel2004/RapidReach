@@ -174,4 +174,63 @@ const isDriver = async (req, res, next) => {
   }
 };
 
-module.exports = { protect, authorize, isDriver }; 
+// Middleware to check if the user is a warehouse worker
+const isWarehouseWorker = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({
+        code: 401,
+        message: 'Not authorized, no token',
+        data: null
+      });
+    }
+
+    // Add debugging
+    console.log('User role check for warehouse worker:', {
+      userId: req.user._id,
+      hasRoleId: !!req.user.role_id,
+      roleName: req.user.role_id ? (typeof req.user.role_id === 'object' ? req.user.role_id.name : req.user.role_id) : 'none',
+      roleObject: req.user.role_id
+    });
+
+    // Check if user has a warehouse worker role OR is a superadmin
+    const roleId = req.user.role_id;
+
+    // Case 1: role_id is populated as an object
+    if (typeof roleId === 'object' && roleId !== null) {
+      const roleName = roleId.name?.toLowerCase();
+      if (roleName === 'warehouse worker' || roleName === 'super admin' || roleName === 'superadmin' || roleName === 'admin') {
+        return next();
+      }
+    }
+    // Case 2: We have the role as a string ID or name
+    else if (typeof roleId === 'string') {
+      // If we just have the ID, we'll need to fetch the role
+      const Role = require('../models/roleModel');
+      const role = await Role.findById(roleId);
+
+      if (role) {
+        const roleName = role.name.toLowerCase();
+        if (roleName === 'warehouse worker' || roleName === 'super admin' || roleName === 'superadmin' || roleName === 'admin') {
+          return next();
+        }
+      }
+    }
+
+    // If we reach here, the user doesn't have the required role
+    return res.status(403).json({
+      code: 403,
+      message: 'Not authorized, warehouse worker or admin access required',
+      data: null
+    });
+  } catch (error) {
+    console.error('❌ Warehouse Worker Auth Error:', error);
+    return res.status(500).json({
+      code: 500,
+      message: 'Server error during authorization',
+      data: null
+    });
+  }
+};
+
+module.exports = { protect, authorize, isDriver, isWarehouseWorker }; 
