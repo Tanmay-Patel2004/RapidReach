@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from "react";
+import { useSelector } from "react-redux";
+import { selectAuthToken } from "../store/slices/authSlice";
 import {
   Box,
   Typography,
@@ -22,10 +24,12 @@ import {
 } from "@mui/material";
 import { Download as DownloadIcon } from "@mui/icons-material";
 import { format } from "date-fns";
-import axios from "axios";
 
 const ReportPage = () => {
   console.log("ReportPage component rendering");
+
+  // Get token from Redux store
+  const token = useSelector(selectAuthToken);
 
   const [month, setMonth] = useState(new Date().getMonth() + 1);
   const [year, setYear] = useState(new Date().getFullYear());
@@ -64,38 +68,84 @@ const ReportPage = () => {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("authToken");
-      console.log("Auth token:", token ? "Present" : "Missing");
+      // Use token from Redux store
+      console.log("Auth token from Redux:", token ? "Present" : "Missing");
+      console.log(
+        "Auth token length from Redux:",
+        token ? token.length : "No token"
+      );
 
-      const response = await axios.get(
+      // Also check localStorage for backup (debugging)
+      const localStorageToken = localStorage.getItem("token");
+      const authStateToken = JSON.parse(
+        localStorage.getItem("authState")
+      )?.token;
+      console.log(
+        "LocalStorage token:",
+        localStorageToken ? "Present" : "Missing"
+      );
+      console.log("AuthState token:", authStateToken ? "Present" : "Missing");
+
+      // Use token from Redux first, then fallback to localStorage if needed
+      const effectiveToken = token || authStateToken || localStorageToken;
+
+      if (!effectiveToken) {
+        console.error("Auth token is missing from all sources");
+        setError("Authentication token is missing. Please login again.");
+        setSnackbar({
+          open: true,
+          message: "Authentication token is missing. Please login again.",
+          severity: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Log full request configuration for debugging
+      console.log(
+        "Request URL:",
+        `http://localhost:3000/api/orders/report?month=${month}&year=${year}`
+      );
+      console.log("Using token:", effectiveToken.substring(0, 10) + "...");
+
+      // Use fetch API instead of axios for direct comparison with Postman
+      const response = await fetch(
         `http://localhost:3000/api/orders/report?month=${month}&year=${year}`,
         {
+          method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization: `Bearer ${effectiveToken}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
           },
+          credentials: "include", // Include credentials (cookies, etc.)
         }
       );
 
-      console.log("API response:", response.data);
+      console.log("API response status:", response.status);
 
-      if (response.data.code === 200) {
-        setReportData(response.data.data);
+      const data = await response.json();
+      console.log("API response data:", data);
+
+      if (data.code === 200) {
+        setReportData(data.data);
         console.log("Report data loaded successfully");
       } else {
-        setError(response.data.message || "Failed to fetch report");
-        console.error("API error:", response.data.message);
+        setError(data.message || "Failed to fetch report");
+        console.error("API error:", data.message);
         setSnackbar({
           open: true,
-          message: response.data.message || "Failed to fetch report",
+          message: data.message || "Failed to fetch report",
           severity: "error",
         });
       }
     } catch (error) {
       console.error("Error fetching report:", error);
-      setError(error.response?.data?.message || "Failed to fetch report");
+
+      setError(error.message || "Failed to fetch report");
       setSnackbar({
         open: true,
-        message: error.response?.data?.message || "Failed to fetch report",
+        message: error.message || "Failed to fetch report",
         severity: "error",
       });
     } finally {
