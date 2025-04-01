@@ -38,6 +38,7 @@ import {
   AccountCircle,
   Person as PersonIcon,
   Dashboard,
+  Assessment as AssessmentIcon,
 } from "@mui/icons-material";
 import {
   logout,
@@ -76,6 +77,12 @@ const Navbar = () => {
           { title: "Permissions", path: "/permissions", icon: <Security /> },
           { title: "Warehouse", path: "/warehouse", icon: <Warehouse /> },
           { title: "Orders", path: "/orders", icon: <OrderIcon /> },
+          { title: "Reports", path: "/reports", icon: <AssessmentIcon /> },
+          {
+            title: "Test Reports",
+            path: "/test-reports",
+            icon: <AssessmentIcon />,
+          },
         ];
       case "customer":
         return [
@@ -100,6 +107,9 @@ const Navbar = () => {
 
   const menuItems = getMenuItems();
 
+  console.log("Navbar rendering, role:", roleName);
+  console.log("Menu items:", menuItems);
+
   const handleMobileMenuOpen = (event) => {
     setMobileMenuAnchor(event.currentTarget);
   };
@@ -111,6 +121,12 @@ const Navbar = () => {
   const handleMenuClose = () => {
     setMobileMenuAnchor(null);
     setUserMenuAnchor(null);
+  };
+
+  const handleNavigation = (path) => {
+    console.log("Navigating to:", path);
+    navigate(path);
+    handleMenuClose();
   };
 
   const handleLogout = async () => {
@@ -163,8 +179,7 @@ const Navbar = () => {
             button
             key={item.title}
             onClick={() => {
-              navigate(item.path);
-              handleMenuClose();
+              handleNavigation(item.path);
             }}
             selected={location.pathname === item.path}>
             <ListItemIcon>{item.icon}</ListItemIcon>
@@ -198,7 +213,7 @@ const Navbar = () => {
             {menuItems.map((item) => (
               <MenuItem
                 key={item.title}
-                onClick={() => navigate(item.path)}
+                onClick={() => handleNavigation(item.path)}
                 selected={location.pathname === item.path}>
                 {item.title}
               </MenuItem>
@@ -275,8 +290,7 @@ const Navbar = () => {
               <MenuItem
                 key={item.title}
                 onClick={() => {
-                  navigate(item.path);
-                  handleMenuClose();
+                  handleNavigation(item.path);
                 }}>
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.title} />
@@ -319,8 +333,7 @@ const Navbar = () => {
             <Divider />
             <MenuItem
               onClick={() => {
-                navigate("/profile");
-                handleMenuClose();
+                handleNavigation("/profile");
               }}>
               <ListItemIcon>
                 <PersonIcon fontSize="small" />

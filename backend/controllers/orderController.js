@@ -135,8 +135,85 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+// @desc    Get monthly order report
+// @route   GET /api/orders/report
+// @access  Private
+const getMonthlyReport = async (req, res) => {
+  try {
+    const { month, year } = req.query;
+
+    // Validate input
+    const monthNum = parseInt(month);
+    const yearNum = parseInt(year);
+
+    if (!month || !year || isNaN(monthNum) || isNaN(yearNum) ||
+      monthNum < 1 || monthNum > 12 || yearNum < 2000 || yearNum > 2100) {
+      const { code, message, data } = getHandlerResponse(
+        false,
+        httpStatus.BAD_REQUEST,
+        'Invalid month or year. Month should be 1-12 and year should be between 2000-2100',
+        null
+      );
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Create date range for the specified month
+    const startDate = new Date(yearNum, monthNum - 1, 1);
+    const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59);
+
+    // Fetch orders for the specified month
+    const orders = await Order.find({
+      createdAt: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    }).select('_id createdAt customerName totalAmount status');
+
+    // Calculate totals
+    const totalAmount = orders.reduce((sum, order) => sum + (order.totalAmount || 0), 0);
+    const totalOrders = orders.length;
+
+    // Format orders for response
+    const formattedOrders = orders.map(order => ({
+      orderId: order._id,
+      date: order.createdAt,
+      customer: order.customerName,
+      amount: order.totalAmount,
+      status: order.status
+    }));
+
+    // Prepare report
+    const report = {
+      month: monthNum,
+      year: yearNum,
+      totalOrders,
+      totalAmount,
+      orders: formattedOrders
+    };
+
+    const { code, message, data } = getHandlerResponse(
+      true,
+      httpStatus.OK,
+      'Monthly report generated successfully',
+      report
+    );
+    return res.status(code).json({ code, message, data });
+
+  } catch (error) {
+    console.error('❌ Monthly Report Error:', error);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message,
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  }
+};
+
 module.exports = {
   checkout,
   updateOrderStatus,
   getAllOrders,
+  getMonthlyReport,
 };

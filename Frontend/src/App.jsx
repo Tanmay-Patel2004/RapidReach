@@ -1,7 +1,7 @@
 import { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Box, Toolbar } from '@mui/material';
+import { Box, Toolbar } from "@mui/material";
 import logger from "./utils/logger";
 import Navbar from "./components/Navigation/Navbar";
 import LoginPage from "./pages/LoginPage";
@@ -11,7 +11,9 @@ import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import DriverDashboard from "./pages/dashboards/DriverDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
-import ProductDetailsPage from './pages/ProductDetailsPage';
+import ProductDetailsPage from "./pages/ProductDetailsPage";
+import ReportPage from "./pages/ReportPage";
+import TestReportPage from "./pages/TestReportPage";
 import {
   restoreAuthState,
   selectIsAuthenticated,
@@ -19,13 +21,13 @@ import {
   loginSuccess,
   logout,
 } from "./store/slices/authSlice";
-import SectionPage from './components/common/SectionPage';
-import { getStoredAuthState } from './middleware/authMiddleware';
-import { api } from './utils/api';
-import CartPage from './pages/CartPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrdersPage from './pages/OrdersPage';
-import { AuthProvider } from './contexts/AuthContext';
+import SectionPage from "./components/common/SectionPage";
+import { getStoredAuthState } from "./middleware/authMiddleware";
+import { api } from "./utils/api";
+import CartPage from "./pages/CartPage";
+import CheckoutPage from "./pages/CheckoutPage";
+import OrdersPage from "./pages/OrdersPage";
+import { AuthProvider } from "./contexts/AuthContext";
 
 function App() {
   const dispatch = useDispatch();
@@ -42,9 +44,9 @@ function App() {
   useEffect(() => {
     const verifyAuth = async () => {
       try {
-        const response = await api.fetch('/auth/verify');
+        const response = await api.fetch("/auth/verify");
         const data = await response.json();
-        
+
         if (data.code === 200) {
           dispatch(loginSuccess(data.data));
         } else {
@@ -88,11 +90,19 @@ function App() {
   }, [userRole]);
 
   const ProtectedRoute = ({ children }) => {
+    console.log("ProtectedRoute check, isAuthenticated:", isAuthenticated);
+
     if (!isAuthenticated) {
+      console.log("Not authenticated, redirecting to login");
       return <Navigate to="/" replace />;
     }
+
+    console.log("Authentication passed, rendering protected content");
     return children;
   };
+
+  console.log("Rendering App component, auth status:", isAuthenticated);
+  console.log("User role:", userRole);
 
   if (!isAuthenticated) {
     return (
@@ -106,21 +116,21 @@ function App() {
 
   return (
     <AuthProvider>
-      <Box sx={{ display: 'flex' }}>
+      <Box sx={{ display: "flex" }}>
         <Navbar />
         <Box
           component="main"
           sx={{
             flexGrow: 1,
-            width: '100%',
-            ml: { sm: '250px' },
-            backgroundColor: '#f5f5f5',
-            minHeight: '100vh',
+            width: "100%",
+            ml: { sm: "250px" },
+            backgroundColor: "#f5f5f5",
+            minHeight: "100vh",
             p: 0,
-            overflowX: 'hidden',
-          }}
-        >
+            overflowX: "hidden",
+          }}>
           <Toolbar />
+          {console.log("Rendering routes")}
           <Routes>
             <Route
               path="/dashboard"
@@ -211,6 +221,23 @@ function App() {
               element={
                 <ProtectedRoute>
                   <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/reports"
+              element={
+                <ProtectedRoute>
+                  {console.log("Reports route accessed")}
+                  <ReportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/test-reports"
+              element={
+                <ProtectedRoute>
+                  <TestReportPage />
                 </ProtectedRoute>
               }
             />
