@@ -378,7 +378,7 @@ const updateProductStock = async (req, res) => {
 
       // Decrease the stock quantity
       product.stockQuantity -= item.quantity;
-      
+
       // Validate stock doesn't go negative
       if (product.stockQuantity < 0) {
         throw new Error(`Insufficient stock for product: ${product.name}`);

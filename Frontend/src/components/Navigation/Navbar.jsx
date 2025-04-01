@@ -93,7 +93,7 @@ const Navbar = () => {
       case "warehouse worker":
         return [
           { title: "Dashboard", path: "/dashboard", icon: <Dashboard /> },
-          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
+          { title: "Products", path: "/product-management", icon: <Store /> },
         ];
       case "driver":
         return [

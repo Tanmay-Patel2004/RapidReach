@@ -12,6 +12,7 @@ import DriverDashboard from "./pages/dashboards/DriverDashboard";
 import WarehouseDashboard from "./pages/dashboards/WarehouseDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
+import ProductManagementPage from "./pages/ProductManagementPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
 import ReportPage from "./pages/ReportPage";
 import TestReportPage from "./pages/TestReportPage";
@@ -241,6 +242,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <TestReportPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/product-management"
+              element={
+                <ProtectedRoute>
+                  <ProductManagementPage />
                 </ProtectedRoute>
               }
             />
