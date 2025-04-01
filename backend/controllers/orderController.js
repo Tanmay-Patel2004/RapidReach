@@ -10,7 +10,7 @@ const httpStatus = require('../Helper/http_status');
 // @access  Private
 const checkout = async (req, res) => {
   try {
-    const { products, address, email, phone, customerName, totalAmount } = req.body;
+    const { products, address, email, phone, customerName, subtotal, tax, totalAmount } = req.body;
     const userId = req.user._id;
 
     if (!products || products.length === 0) {
@@ -44,6 +44,9 @@ const checkout = async (req, res) => {
       address,
       email,
       phone,
+      subtotal: subtotal || totalAmount, // Fallback for backward compatibility
+      tax: tax || 0, // Default to 0 if not provided
+      taxRate: 0.13, // 13% tax rate
       totalAmount
     });
 
@@ -72,7 +75,19 @@ const checkout = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const { status, assignedDrivers } = req.body;
+    const { status } = req.body;
+
+    // Check if the status is valid
+    const validStatuses = ['Pending', 'Processing', 'Ready for Pickup', 'Out for Delivery', 'In Transit', 'Delivered', 'Failed Delivery'];
+    if (!validStatuses.includes(status)) {
+      const { code, message, data } = getHandlerResponse(
+        false,
+        httpStatus.BAD_REQUEST,
+        `Invalid status. Must be one of: ${validStatuses.join(', ')}`,
+        null
+      );
+      return res.status(code).json({ code, message, data });
+    }
 
     const order = await Order.findById(id);
     if (!order) {
@@ -80,36 +95,16 @@ const updateOrderStatus = async (req, res) => {
       return res.status(code).json({ code, message, data });
     }
 
+    // Update the order status
     order.status = status;
 
-    // Assign the order to the most active idle driver if status is "Ready for Pickup"
+    // If status is "Ready for Pickup", clear any existing driver assignments
+    // This ensures the order is available for any driver to claim
     if (status === 'Ready for Pickup') {
-      const idleDriver = await Driver.findOne({ status: 'Idle' })
-        .sort({ activeTime: -1 }) // Sort by highest active time
-        .exec();
+      // Clear assigned drivers if any
+      order.assignedDrivers = [];
 
-      if (idleDriver) {
-        // Assign the driver to the order
-        order.assignedDrivers = [
-          {
-            driverId: idleDriver.user,
-            deliveryStatus: 'Pending',
-            deliveryTime: null
-          }
-        ];
-
-        // Update the driver's status to "Assigned"
-        idleDriver.status = 'Assigned';
-        await idleDriver.save();
-      } else {
-        const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'No idle drivers available', null);
-        return res.status(code).json({ code, message, data });
-      }
-    }
-
-    // Update assigned drivers if provided
-    if (assignedDrivers) {
-      order.assignedDrivers = assignedDrivers;
+      console.log(`Order ${id} marked as Ready for Pickup and available for drivers to claim`);
     }
 
     await order.save();
@@ -211,9 +206,58 @@ const getMonthlyReport = async (req, res) => {
   }
 };
 
+// @desc    Set order ready for pickup
+// @route   PUT /api/orders/:id/ready-for-pickup
+// @access  Private (Admin/Warehouse)
+const setOrderReadyForPickup = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const order = await Order.findById(id);
+    if (!order) {
+      const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'Order not found', null);
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Only certain statuses can be marked as ready for pickup
+    const allowedPreviousStatuses = ['Pending', 'Processing'];
+    if (!allowedPreviousStatuses.includes(order.status)) {
+      const { code, message, data } = getHandlerResponse(
+        false,
+        httpStatus.BAD_REQUEST,
+        `Order can only be marked as ready for pickup from statuses: ${allowedPreviousStatuses.join(', ')}. Current status: ${order.status}`,
+        null
+      );
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Set order status to Ready for Pickup and clear any existing assignments
+    order.status = 'Ready for Pickup';
+    order.assignedDrivers = [];
+
+    await order.save();
+
+    console.log(`Order ${id} marked as Ready for Pickup by user ${req.user._id}`);
+
+    const { code, message, data } = getHandlerResponse(
+      true,
+      httpStatus.OK,
+      'Order is now ready for pickup by drivers',
+      order
+    );
+
+    return res.status(code).json({ code, message, data });
+  } catch (error) {
+    console.error('❌ Set Order Ready For Pickup Error:', error);
+    const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
+    return res.status(code).json({ code, message, data });
+  }
+};
+
 module.exports = {
   checkout,
   updateOrderStatus,
   getAllOrders,
   getMonthlyReport,
+  setOrderReadyForPickup,
 };

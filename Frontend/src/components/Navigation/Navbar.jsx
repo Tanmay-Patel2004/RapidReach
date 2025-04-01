@@ -98,7 +98,6 @@ const Navbar = () => {
       case "driver":
         return [
           { title: "Dashboard", path: "/dashboard", icon: <Dashboard /> },
-          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
         ];
       default:
         return [];

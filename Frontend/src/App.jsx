@@ -9,6 +9,7 @@ import SignUpPage from "./pages/SignUpPage";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import DriverDashboard from "./pages/dashboards/DriverDashboard";
+import WarehouseDashboard from "./pages/dashboards/WarehouseDashboard";
 import ProfilePage from "./pages/ProfilePage";
 import ProductsPage from "./pages/ProductsPage";
 import ProductDetailsPage from "./pages/ProductDetailsPage";
@@ -83,6 +84,8 @@ function App() {
         return <CustomerDashboard />;
       case "driver":
         return <DriverDashboard />;
+      case "warehouse worker":
+        return <WarehouseDashboard />;
       default:
         logger.warn(`Unknown role: ${roleName}`);
         return <Navigate to="/" replace />;
@@ -116,7 +119,7 @@ function App() {
 
   return (
     <AuthProvider>
-      <Box sx={{ display: "flex" }}>
+      <Box sx={{ display: "contents" }}>
         <Navbar />
         <Box
           component="main"
