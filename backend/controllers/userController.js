@@ -18,7 +18,7 @@ const getAllUsers = async (req, res) => {
 
     const { code, message, data } = getHandlerResponse(true, httpStatus.OK, 'Users retrieved successfully', users);
     return res.status(code).json({ code, message, data });
-    return res.send("./view/login.ejs",users.username);
+    return res.send("./view/login.ejs", users.username);
   } catch (error) {
     console.error('❌ Get All Users Error:', error);
     const { code, message, data } = getHandlerResponse(false, httpStatus.INTERNAL_SERVER_ERROR, error.message, null);
@@ -52,6 +52,16 @@ const getUserById = async (req, res) => {
 // @access  Private
 const updateUser = async (req, res) => {
   try {
+    // Log the request for debugging
+    console.log('Update user request received:', {
+      userId: req.params.id,
+      requestBodyKeys: Object.keys(req.body),
+      hasProfilePicture: !!req.body.profilePicture,
+      isBase64Image: req.body.profilePicture?.startsWith('data:image'),
+      requestHeaders: req.headers,
+      currentUserId: req.user?._id
+    });
+
     // Check if any update fields are provided
     if (Object.keys(req.body).length === 0 && !req.file) {
       const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'No update fields provided', null);
@@ -65,25 +75,61 @@ const updateUser = async (req, res) => {
       phoneNumber,
       address,
       role_id,
-      isEmailVerified
+      isEmailVerified,
+      profilePicture
     } = req.body;
 
+    // Find the user to update
     const user = await User.findById(req.params.id);
     if (!user) {
       const { code, message, data } = getHandlerResponse(false, httpStatus.NOT_FOUND, 'User not found', null);
       return res.status(code).json({ code, message, data });
     }
 
-    // Handle profile picture upload if file is present
+    // Handle profile picture
     let profilePictureUrl = user.profilePicture;
-    if (req.file) {
-      try {
-        console.log('📁 Received file:', {
-          filename: req.file.originalname,
-          mimetype: req.file.mimetype,
-          size: req.file.size
-        });
 
+    // If a profile picture is provided as base64 string
+    if (profilePicture && profilePicture.startsWith('data:image')) {
+      try {
+        console.log('Processing base64 profile picture');
+
+        // Extract the mime type and base64 data
+        const matches = profilePicture.match(/^data:([A-Za-z-+/]+);base64,(.+)$/);
+
+        if (!matches || matches.length !== 3) {
+          throw new Error('Invalid base64 image format');
+        }
+
+        const mimeType = matches[1];
+        const base64Data = matches[2];
+
+        // Create a buffer from the base64 data
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // Check file size - limit to 5MB
+        if (buffer.length > 5 * 1024 * 1024) {
+          throw new Error('Image file is too large (max 5MB)');
+        }
+
+        // Create a virtual file object for S3 upload
+        const virtualFile = {
+          originalname: `profile-${req.params.id}-${Date.now()}.${mimeType.split('/')[1] || 'jpg'}`,
+          buffer: buffer,
+          mimetype: mimeType
+        };
+
+        // Upload to S3
+        profilePictureUrl = await uploadToS3(virtualFile);
+        console.log('Profile picture uploaded to S3:', profilePictureUrl);
+      } catch (uploadError) {
+        console.error('❌ Detailed Upload Error:', uploadError);
+        const { code, message, data } = getHandlerResponse(false, httpStatus.BAD_REQUEST, 'Error uploading profile picture', { details: uploadError.message });
+        return res.status(code).json({ code, message, data });
+      }
+    } else if (req.file) {
+      // Handle multipart form upload if present
+      try {
         profilePictureUrl = await uploadToS3(req.file);
       } catch (uploadError) {
         console.error('❌ Detailed Upload Error:', uploadError);
