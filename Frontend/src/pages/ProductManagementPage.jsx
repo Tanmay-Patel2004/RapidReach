@@ -135,8 +135,20 @@ const ProductManagementPage = () => {
 
       const result = await response.json();
 
+      // Add debug logging for the first product to check video field
+      if (result.data?.products?.length > 0) {
+        console.log("Sample product from API:", result.data.products[0]);
+      }
+
       if (result.code === 200) {
-        setProducts(result.data.products);
+        // Process the products to normalize video URL field
+        const processedProducts = result.data.products.map((product) => ({
+          ...product,
+          // Ensure we have a consistent videoUrl property
+          videoUrl: product.videoUrl || product.video || null,
+        }));
+
+        setProducts(processedProducts);
         setCategories(result.data.categories || []);
         setTotalPages(Math.ceil(result.data.count / result.data.pageSize) || 1);
         logger.info("Products fetched successfully", {
@@ -176,6 +188,15 @@ const ProductManagementPage = () => {
         isExisting: true,
       })) || [];
 
+    // Fix: Check for all possible video URL field names
+    const videoUrl = initialProduct.videoUrl || initialProduct.video || null;
+
+    // Add debug logging
+    if (mode === "edit") {
+      console.log("Editing product with data:", initialProduct);
+      console.log("Video URL found:", videoUrl);
+    }
+
     setProductDialog({
       open: true,
       mode,
@@ -183,7 +204,7 @@ const ProductManagementPage = () => {
       imageFiles: [],
       imageFilePreviews: imagePreviews,
       videoFile: null,
-      videoPreview: initialProduct.videoUrl || null,
+      videoPreview: videoUrl,
     });
   };
 
