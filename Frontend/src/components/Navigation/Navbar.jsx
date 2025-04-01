@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar,
   Box,
@@ -20,7 +20,7 @@ import {
   ListItemText,
   Divider,
   Badge,
-} from '@mui/material';
+} from "@mui/material";
 import {
   Menu as MenuIcon,
   Person,
@@ -38,10 +38,14 @@ import {
   AccountCircle,
   Person as PersonIcon,
   Dashboard,
-} from '@mui/icons-material';
-import {logout , selectRoleName , selectUser } from '../../store/slices/authSlice';
-import logger from '../../utils/logger';
-import { selectCartItems } from '../../store/slices/cartSlice';
+} from "@mui/icons-material";
+import {
+  logout,
+  selectRoleName,
+  selectUser,
+} from "../../store/slices/authSlice";
+import logger from "../../utils/logger";
+import { selectCartItems } from "../../store/slices/cartSlice";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -52,11 +56,11 @@ const Navbar = () => {
   const [mobileMenuAnchor, setMobileMenuAnchor] = useState(null);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const cartItems = useSelector(selectCartItems);
-  
+
   const isMobileMenuOpen = Boolean(mobileMenuAnchor);
   const isUserMenuOpen = Boolean(userMenuAnchor);
-  const userMenuId = 'primary-user-account-menu';
-  const mobileMenuId = 'primary-mobile-menu';
+  const userMenuId = "primary-user-account-menu";
+  const mobileMenuId = "primary-mobile-menu";
 
   // Calculate total items in cart
   const cartItemCount = cartItems?.items?.length || 0;
@@ -64,31 +68,30 @@ const Navbar = () => {
   // Menu items based on role
   const getMenuItems = () => {
     switch (roleName.toLowerCase()) {
-      case 'super admin':
+      case "super admin":
         return [
-          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
-          { title: 'Users', path: '/users', icon: <People /> },
-          { title: 'Roles', path: '/roles', icon: <AdminPanelSettings /> },
-          { title: 'Permissions', path: '/permissions', icon: <Security /> },
-          { title: 'Warehouse', path: '/warehouse', icon: <Warehouse /> },
-          { title: 'Settings', path: '/settings', icon: <Settings /> },
-          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
+          { title: "Dashboard", path: "/dashboard", icon: <Dashboard /> },
+          { title: "Users", path: "/users", icon: <People /> },
+          { title: "Roles", path: "/roles", icon: <AdminPanelSettings /> },
+          { title: "Permissions", path: "/permissions", icon: <Security /> },
+          { title: "Warehouse", path: "/warehouse", icon: <Warehouse /> },
+          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
         ];
-      case 'customer':
+      case "customer":
         return [
-          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
-          { title: 'Products', path: '/products', icon: <Store /> },
-          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
+          { title: "Dashboard", path: "/dashboard", icon: <Dashboard /> },
+          { title: "Products", path: "/products", icon: <Store /> },
+          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
         ];
-      case 'warehouse worker':
+      case "warehouse worker":
         return [
-          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
-          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
+          { title: "Dashboard", path: "/dashboard", icon: <Dashboard /> },
+          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
         ];
-      case 'driver':
+      case "driver":
         return [
-          { title: 'Dashboard', path: '/dashboard', icon: <Dashboard /> },
-          { title: 'Orders', path: '/orders', icon: <OrderIcon /> },
+          { title: "Dashboard", path: "/dashboard", icon: <Dashboard /> },
+          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
         ];
       default:
         return [];
@@ -112,11 +115,11 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     try {
-      const response = await fetch('http://localhost:3000/api/auth/logout', {
-        method: 'POST',
+      const response = await fetch("http://localhost:3000/api/auth/logout", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}` // Add token if required
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("authToken")}`, // Add token if required
         },
       });
 
@@ -124,25 +127,31 @@ const Navbar = () => {
         // Dispatch logout action to clear Redux state
         dispatch(logout());
         // Navigate to login page
-        navigate('/');
-        logger.info('User logged out successfully');
+        navigate("/");
+        logger.info("User logged out successfully");
       } else {
-        logger.error('Logout failed on server side');
+        logger.error("Logout failed on server side");
         // Logout anyway to clear local state
         dispatch(logout());
-        navigate('/');
+        navigate("/");
       }
     } catch (error) {
-      logger.error('Logout error:', error);
+      logger.error("Logout error:", error);
       // Logout anyway to clear local state
       dispatch(logout());
-      navigate('/');
+      navigate("/");
     }
   };
 
   const drawer = (
     <Box sx={{ width: 250 }}>
-      <Box sx={{ p: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <Box
+        sx={{
+          p: 2,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}>
         <Typography variant="h6" noWrap component="div">
           Rapid Reach
         </Typography>
@@ -157,8 +166,7 @@ const Navbar = () => {
               navigate(item.path);
               handleMenuClose();
             }}
-            selected={location.pathname === item.path}
-          >
+            selected={location.pathname === item.path}>
             <ListItemIcon>{item.icon}</ListItemIcon>
             <ListItemText primary={item.title} />
           </ListItem>
@@ -176,63 +184,58 @@ const Navbar = () => {
             variant="h6"
             noWrap
             component="div"
-            sx={{ display: { xs: 'none', md: 'flex' }, mr: 2 }}
-          >
+            sx={{ display: { xs: "none", md: "flex" }, mr: 2 }}>
             Rapid Reach
           </Typography>
 
           {/* Main Navigation Links - Hide on mobile */}
-          <Box sx={{ 
-            flexGrow: 1,
-            display: { xs: 'none', md: 'flex' },
-            gap: 2
-          }}>
+          <Box
+            sx={{
+              flexGrow: 1,
+              display: { xs: "none", md: "flex" },
+              gap: 2,
+            }}>
             {menuItems.map((item) => (
-              <MenuItem 
+              <MenuItem
                 key={item.title}
                 onClick={() => navigate(item.path)}
-                selected={location.pathname === item.path}
-              >
+                selected={location.pathname === item.path}>
                 {item.title}
               </MenuItem>
             ))}
           </Box>
 
           {/* Mobile Menu Button - Show only on mobile */}
-          <Box sx={{ flexGrow: 1, display: { xs: 'flex', md: 'none' } }}>
+          <Box sx={{ flexGrow: 1, display: { xs: "flex", md: "none" } }}>
             <IconButton
               size="large"
               aria-label="show more"
               aria-controls={mobileMenuId}
               aria-haspopup="true"
               onClick={handleMobileMenuOpen}
-              color="inherit"
-            >
+              color="inherit">
               <MenuIcon />
             </IconButton>
           </Box>
 
           {/* Right-side Icons */}
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            gap: 2
-          }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+            }}>
             {/* Cart Icon */}
-            <IconButton 
-              color="inherit" 
-              onClick={() => navigate('/cart')}
-            >
-              <Badge 
-                badgeContent={cartItems?.items?.length || 0} 
+            <IconButton color="inherit" onClick={() => navigate("/cart")}>
+              <Badge
+                badgeContent={cartItems?.items?.length || 0}
                 color="error"
                 sx={{
-                  '& .MuiBadge-badge': {
+                  "& .MuiBadge-badge": {
                     right: -3,
                     top: 3,
-                  }
-                }}
-              >
+                  },
+                }}>
                 <ShoppingCart />
               </Badge>
             </IconButton>
@@ -246,11 +249,10 @@ const Navbar = () => {
                 aria-label="account of current user"
                 aria-controls={userMenuId}
                 aria-haspopup="true"
-                color="inherit"
-              >
+                color="inherit">
                 {user?.profilePicture ? (
-                  <Avatar 
-                    src={user.profilePicture} 
+                  <Avatar
+                    src={user.profilePicture}
                     alt={user.name}
                     sx={{ width: 32, height: 32 }}
                   />
@@ -268,16 +270,14 @@ const Navbar = () => {
             keepMounted
             open={isMobileMenuOpen}
             onClose={handleMenuClose}
-            sx={{ display: { xs: 'block', md: 'none' } }}
-          >
+            sx={{ display: { xs: "block", md: "none" } }}>
             {menuItems.map((item) => (
-              <MenuItem 
+              <MenuItem
                 key={item.title}
-                onClick={() => { 
-                  navigate(item.path); 
-                  handleMenuClose(); 
-                }}
-              >
+                onClick={() => {
+                  navigate(item.path);
+                  handleMenuClose();
+                }}>
                 <ListItemIcon>{item.icon}</ListItemIcon>
                 <ListItemText primary={item.title} />
               </MenuItem>
@@ -294,11 +294,11 @@ const Navbar = () => {
             PaperProps={{
               elevation: 0,
               sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.32))',
+                overflow: "visible",
+                filter: "drop-shadow(0px 2px 8px rgba(0,0,0,0.32))",
                 mt: 1.5,
                 minWidth: 200,
-                '& .MuiAvatar-root': {
+                "& .MuiAvatar-root": {
                   width: 32,
                   height: 32,
                   ml: -0.5,
@@ -306,11 +306,10 @@ const Navbar = () => {
                 },
               },
             }}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
+            transformOrigin={{ horizontal: "right", vertical: "top" }}
+            anchorOrigin={{ horizontal: "right", vertical: "bottom" }}>
             <MenuItem sx={{ py: 1 }}>
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ display: "flex", flexDirection: "column" }}>
                 <Typography variant="subtitle1">{user?.name}</Typography>
                 <Typography variant="caption" color="text.secondary">
                   {user?.email}
@@ -318,7 +317,11 @@ const Navbar = () => {
               </Box>
             </MenuItem>
             <Divider />
-            <MenuItem onClick={() => { navigate('/profile'); handleMenuClose(); }}>
+            <MenuItem
+              onClick={() => {
+                navigate("/profile");
+                handleMenuClose();
+              }}>
               <ListItemIcon>
                 <PersonIcon fontSize="small" />
               </ListItemIcon>
@@ -337,4 +340,4 @@ const Navbar = () => {
   );
 };
 
-export default Navbar; 
+export default Navbar;
