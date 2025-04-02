@@ -1,15 +1,15 @@
 # Stage 1: Build the React app
-FROM node:16-alpine AS build
+FROM node:18-alpine AS build
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --only=production
+# Copy package files
+COPY package*.json ./
 
-# Install Vite
-RUN npm install -g vite
+# Install dependencies with caching
+RUN npm ci
+
 # Copy the rest of the application code
 COPY . .
 
@@ -20,10 +20,14 @@ RUN npm run build
 FROM nginx:alpine
 
 # Copy built files from the previous stage
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/dist /usr/share/nginx/html
 
 # Copy custom nginx configuration
 COPY nginx.conf /etc/nginx/nginx.conf
+
+# Add healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
 # Expose port
 EXPOSE 80
