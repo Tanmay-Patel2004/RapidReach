@@ -22,6 +22,9 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  Chip,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import {
@@ -29,8 +32,8 @@ import {
   Logout as LogoutIcon,
   LocalShipping as ShippingIcon,
   ListAlt as OrdersIcon,
-  CheckCircle as DeliveredIcon,
-  Cancel as NotDeliveredIcon,
+  CheckCircle,
+  Cancel,
   AccessTime as PendingIcon,
   LocalShipping as LocalShippingIcon,
 } from "@mui/icons-material";
@@ -46,6 +49,9 @@ const DriverDashboard = () => {
   const dispatch = useDispatch();
   const token = useSelector(selectAuthToken);
   const user = useSelector(selectUser);
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
   const [activeTab, setActiveTab] = useState(0);
   const [availableOrders, setAvailableOrders] = useState([]);
@@ -273,11 +279,21 @@ const DriverDashboard = () => {
     }, ${address.country || ""} ${address.zipCode || ""}`;
   };
 
-  // Format date for display
+  // Improved date formatting
   const formatDate = (dateString) => {
     if (!dateString) return "";
     const date = new Date(dateString);
-    return date.toLocaleString();
+
+    // Return a more compact date format
+    const options = {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    };
+
+    return date.toLocaleDateString(undefined, options);
   };
 
   return (
@@ -296,7 +312,7 @@ const DriverDashboard = () => {
           justifyContent: "space-between",
           alignItems: "center",
           mb: 3,
-          width: "100%",
+          width: "100vh",
         }}>
         <Typography variant="h4">Driver Dashboard</Typography>
       </Box>
@@ -312,40 +328,78 @@ const DriverDashboard = () => {
       </Box>
 
       {/* Tabs */}
-      <Box sx={{ width: "100%", mb: 3 }}>
-        <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 3 }}>
-          <Tabs
-            value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            variant="fullWidth"
+      <Box sx={{ width: "100%", mb: 4 }}>
+        <Card
+          elevation={3}
+          sx={{
+            borderRadius: 2,
+            overflow: "hidden",
+            mb: 3,
+          }}>
+          <Box
             sx={{
-              "& .MuiTabs-indicator": {
-              backgroundColor: "primary.main",
-                height: 3,
-              },
+              borderBottom: 1,
+              borderColor: "divider",
+              backgroundColor: (theme) =>
+                theme.palette.mode === "dark"
+                  ? "rgba(66, 66, 66, 0.2)"
+                  : "rgba(25, 118, 210, 0.05)",
             }}>
-            <Tab
-              label="Available Orders"
-              icon={<OrdersIcon />}
-              iconPosition="start"
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              variant="fullWidth"
               sx={{
-                fontWeight: "bold",
-                fontSize: "1rem",
-                textTransform: "none",
-              }}
-            />
-            <Tab
-              label="My Deliveries"
-              icon={<ShippingIcon />}
-              iconPosition="start"
-              sx={{
-                fontWeight: "bold",
-                fontSize: "1rem",
-                textTransform: "none",
-              }}
-            />
-          </Tabs>
-        </Box>
+                "& .MuiTab-root": {
+                  py: isMobile ? 1.5 : 2,
+                  transition: "all 0.2s",
+                  "&:hover": {
+                    backgroundColor: (theme) =>
+                      theme.palette.mode === "dark"
+                        ? "rgba(255, 255, 255, 0.05)"
+                        : "rgba(25, 118, 210, 0.05)",
+                  },
+                },
+                "& .MuiTabs-indicator": {
+                  backgroundColor: "primary.main",
+                  height: 3,
+                },
+              }}>
+              <Tab
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <OrdersIcon fontSize={isMobile ? "small" : "medium"} />
+                    <Typography
+                      variant={isMobile ? "body2" : "button"}
+                      sx={{ fontWeight: activeTab === 0 ? "bold" : "medium" }}>
+                      Available Orders
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  fontSize: "1rem",
+                  textTransform: "none",
+                }}
+              />
+              <Tab
+                label={
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    <ShippingIcon fontSize={isMobile ? "small" : "medium"} />
+                    <Typography
+                      variant={isMobile ? "body2" : "button"}
+                      sx={{ fontWeight: activeTab === 1 ? "bold" : "medium" }}>
+                      My Deliveries
+                    </Typography>
+                  </Box>
+                }
+                sx={{
+                  fontSize: "1rem",
+                  textTransform: "none",
+                }}
+              />
+            </Tabs>
+          </Box>
+        </Card>
 
         {/* Refresh Button */}
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: 3 }}>
@@ -356,163 +410,70 @@ const DriverDashboard = () => {
             }
             disabled={refreshing}
             startIcon={refreshing ? <CircularProgress size={20} /> : null}
-            sx={{ borderRadius: 2 }}>
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              boxShadow: 2,
+            }}>
             {refreshing ? "Refreshing..." : "Refresh"}
           </Button>
         </Box>
 
         {/* Available Orders Tab */}
-        {activeTab === 0 && (
-          <Grid container spacing={3}>
-            {availableOrders.length === 0 ? (
-              <Grid item xs={12}>
-                <Card
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    py: 4,
-                  }}>
-                  <CardContent>
-                    <Typography
-                      align="center"
-                      variant="h6"
-                      color="text.secondary">
-                      No orders available for pickup
-                    </Typography>
-                    <Typography
-                      align="center"
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1 }}>
-                      Check back later or refresh to see new orders
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ) : (
-              availableOrders.map((order) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={order._id}>
-                  <Card
-            sx={{
-                      height: "100%",
-                      display: "flex",
-                      flexDirection: "column",
-                      borderRadius: 2,
-                      boxShadow: 3,
-                      transition: "transform 0.2s, box-shadow 0.2s",
-              "&:hover": {
-                        transform: "translateY(-4px)",
-                        boxShadow: 6,
-              },
-            }}>
-                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
-                      <Box
-                        sx={{
-                          backgroundColor: "primary.light",
-                          color: "primary.contrastText",
-                          borderRadius: 1.5,
-                          p: 1.5,
-                          mb: 2,
-                        }}>
-                        <Typography variant="h6" fontWeight="bold">
-                          Order #{order._id.slice(-6).toUpperCase()}
-                        </Typography>
-                      </Box>
-                      <Typography variant="subtitle1" gutterBottom>
-                        <strong>Customer:</strong>{" "}
-                        {order.customerName || "No name provided"}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom>
-                        <strong>Placed:</strong> {formatDate(order.createdAt)}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom>
-                        <strong>Items:</strong> {order.items?.length || 0}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom>
-                        <strong>Total:</strong> $
-                        {order.totalAmount?.toFixed(2) || "0.00"}
-                      </Typography>
-
-                      <Divider sx={{ my: 2 }} />
-
-                      <Typography
-                        variant="subtitle2"
-                        gutterBottom
-                        fontWeight="bold">
-                        Delivery Address:
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        paragraph>
-                        {formatAddress(order.address) || "No address provided"}
-                      </Typography>
-                    </CardContent>
-                    <Box sx={{ p: 3, pt: 0 }}>
-                      <Button
-                        variant="contained"
-                        fullWidth
-                        size="large"
-                        color="primary"
-                        onClick={() => claimOrder(order._id)}
-                        disabled={loading}
-                        startIcon={
-                          loading ? <CircularProgress size={20} /> : null
-                        }
-                        sx={{
-                          borderRadius: 2,
-                          py: 1.5,
-                        }}>
-                        {loading ? "Claiming..." : "Claim Order"}
-                      </Button>
-                    </Box>
-                  </Card>
-                </Grid>
-              ))
-            )}
-          </Grid>
-        )}
-
-        {/* My Deliveries Tab */}
-        {activeTab === 1 && (
-          <Grid container spacing={3}>
-            {myOrders.length === 0 ? (
-              <Grid item xs={12}>
-                <Card
-                  sx={{
-                    borderRadius: 2,
-                    boxShadow: 3,
-                    py: 4,
-                  }}>
-                  <CardContent>
-                    <Typography
-                      align="center"
-                      variant="h6"
-                      color="text.secondary">
-                      You haven't claimed any orders yet
-                    </Typography>
-                    <Typography
-                      align="center"
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mt: 1 }}>
-                      Go to the "Available Orders" tab to claim an order
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ) : (
-              myOrders.map((order) => (
-                <Grid item xs={12} sm={6} md={4} lg={3} key={order._id}>
+        <Box
+          sx={{
+            display: activeTab === 0 ? "block" : "none",
+            width: "100%",
+          }}>
+          {refreshing ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "200px",
+              }}>
+              <CircularProgress />
+            </Box>
+          ) : availableOrders.length === 0 ? (
+            <Card
+              sx={{
+                p: 4,
+                textAlign: "center",
+                borderRadius: 2,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(25, 118, 210, 0.05)",
+                border: "1px dashed",
+                borderColor: "divider",
+              }}>
+              <OrdersIcon
+                sx={{
+                  fontSize: 60,
+                  color: "text.secondary",
+                  opacity: 0.5,
+                  mb: 2,
+                }}
+              />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                No Available Orders
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                There are no orders available for delivery at this moment.
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={fetchAvailableOrders}
+                sx={{ mt: 2 }}>
+                Check Again
+              </Button>
+            </Card>
+          ) : (
+            <Grid container spacing={3}>
+              {availableOrders.map((order) => (
+                <Grid item xs={12} sm={6} md={4} key={order._id}>
                   <Card
                     sx={{
                       height: "100%",
@@ -525,168 +486,462 @@ const DriverDashboard = () => {
                         transform: "translateY(-4px)",
                         boxShadow: 6,
                       },
-                      backgroundColor:
-                        order.status === "Out for Delivery"
-                          ? "rgba(3, 169, 244, 0.05)"
-                          : order.status === "In Transit"
-                          ? "rgba(255, 235, 59, 0.05)"
-                          : order.status === "Delivered"
-                          ? "rgba(76, 175, 80, 0.05)"
-                          : order.status === "Failed Delivery"
-                          ? "rgba(244, 67, 54, 0.05)"
-                          : "inherit",
-                      borderLeft:
-                        order.status === "Out for Delivery"
-                          ? "4px solid #03a9f4"
-                          : order.status === "In Transit"
-                          ? "4px solid #ffc107"
-                          : order.status === "Delivered"
-                          ? "4px solid #4caf50"
-                          : order.status === "Failed Delivery"
-                          ? "4px solid #f44336"
-                          : "none",
+                      position: "relative",
+                      overflow: "visible",
+                      "&::before": {
+                        content: '""',
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: "4px",
+                        backgroundColor: "primary.main",
+                        borderRadius: "2px 2px 0 0",
+                      },
                     }}>
-                    <CardContent sx={{ flexGrow: 1, p: 3 }}>
+                    <CardContent sx={{ p: 0 }}>
+                      {/* Header */}
+                      <Box
+                        sx={{
+                          backgroundColor: (theme) =>
+                            theme.palette.mode === "dark"
+                              ? "primary.dark"
+                              : "primary.main",
+                          color: "primary.contrastText",
+                          borderRadius: "2px 2px 0 0",
+                          p: 2,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                        }}>
+                        <Typography
+                          variant="subtitle1"
+                          fontWeight="bold"
+                          sx={{ display: "flex", alignItems: "center" }}>
+                          <OrdersIcon sx={{ mr: 1, fontSize: 20 }} />#
+                          {order._id.slice(-6).toUpperCase()}
+                        </Typography>
+                        <Chip
+                          label="New"
+                          size="small"
+                          sx={{
+                            backgroundColor: "white",
+                            color: "primary.main",
+                            fontWeight: "bold",
+                          }}
+                        />
+                      </Box>
+
+                      {/* Content */}
+                      <Box sx={{ p: 3 }}>
+                        <Box sx={{ mb: 2 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 0.5 }}>
+                            Customer
+                          </Typography>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{ fontWeight: "medium" }}>
+                            {order.customerName || "Not specified"}
+                          </Typography>
+                        </Box>
+
+                        <Grid container spacing={2} sx={{ mb: 2 }}>
+                          <Grid item xs={6}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mb: 0.5 }}>
+                              Placed
+                            </Typography>
+                            <Typography variant="body1">
+                              {formatDate(order.createdAt)}
+                            </Typography>
+                          </Grid>
+
+                          <Grid item xs={6}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ mb: 0.5 }}>
+                              Items
+                            </Typography>
+                            <Typography variant="body1">
+                              {order.items?.length || 0}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+
+                        <Box sx={{ mb: 2 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 0.5 }}>
+                            Total Amount
+                          </Typography>
+                          <Typography
+                            variant="h6"
+                            sx={{ color: "primary.main", fontWeight: "bold" }}>
+                            ${order.totalAmount?.toFixed(2) || "0.00"}
+                          </Typography>
+                        </Box>
+
+                        <Divider sx={{ my: 2 }} />
+
+                        <Box sx={{ mb: 2 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            sx={{ mb: 0.5 }}>
+                            Delivery Address
+                          </Typography>
+                          <Typography variant="body1">
+                            {formatAddress(order.address) ||
+                              "No address provided"}
+                          </Typography>
+                        </Box>
+
+                        <Button
+                          variant="contained"
+                          fullWidth
+                          size="large"
+                          onClick={() => claimOrder(order._id)}
+                          disabled={loading}
+                          sx={{
+                            mt: 2,
+                            py: 1.5,
+                            borderRadius: 2,
+                            fontWeight: "bold",
+                            boxShadow: 2,
+                            "&:hover": {
+                              boxShadow: 4,
+                            },
+                          }}>
+                          {loading ? (
+                            <>
+                              <CircularProgress size={24} sx={{ mr: 1 }} />{" "}
+                              Claiming...
+                            </>
+                          ) : (
+                            "Claim Order"
+                          )}
+                        </Button>
+                      </Box>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            </Grid>
+          )}
+        </Box>
+
+        {/* My Deliveries Tab */}
+        <Box
+          sx={{
+            display: activeTab === 1 ? "block" : "none",
+            width: "100%",
+          }}>
+          {refreshing ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: "200px",
+              }}>
+              <CircularProgress />
+            </Box>
+          ) : myOrders.length === 0 ? (
+            <Card
+              sx={{
+                p: 4,
+                textAlign: "center",
+                borderRadius: 2,
+                backgroundColor: (theme) =>
+                  theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.05)"
+                    : "rgba(25, 118, 210, 0.05)",
+                border: "1px dashed",
+                borderColor: "divider",
+              }}>
+              <ShippingIcon
+                sx={{
+                  fontSize: 60,
+                  color: "text.secondary",
+                  opacity: 0.5,
+                  mb: 2,
+                }}
+              />
+              <Typography variant="h6" sx={{ mb: 1 }}>
+                No Deliveries Yet
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                You haven't claimed any orders for delivery yet.
+              </Typography>
+              <Button
+                variant="outlined"
+                onClick={() => setActiveTab(0)}
+                sx={{ mt: 2 }}>
+                Browse Available Orders
+              </Button>
+            </Card>
+          ) : (
+            <Grid container spacing={isMobile ? 2 : 3}>
+              {myOrders.map((order) => {
+                // Get the active driver assignment for this order
+                const driverAssignment = order.assignedDrivers?.find(
+                  (driver) => driver.driverId === user?._id
+                );
+                const deliveryStatus =
+                  driverAssignment?.deliveryStatus || "Pending";
+
+                // Define status color
+                const getStatusInfo = (status) => {
+                  switch (status) {
+                    case "Delivered":
+                      return {
+                        color: "#4caf50",
+                        borderColor: "#4caf50",
+                        bgColor: "#e8f5e9",
+                        icon: <CheckCircle sx={{ fontSize: 16, mr: 0.5 }} />,
+                        text: "Delivered",
+                      };
+                    case "Not Delivered":
+                      return {
+                        color: "#f44336",
+                        borderColor: "#f44336",
+                        bgColor: "#ffebee",
+                        icon: <Cancel sx={{ fontSize: 16, mr: 0.5 }} />,
+                        text: "Not Delivered",
+                      };
+                    case "In Transit":
+                      return {
+                        color: "#ff9800",
+                        borderColor: "#ff9800",
+                        bgColor: "#fff8e1",
+                        icon: (
+                          <LocalShippingIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        ),
+                        text: "In Transit",
+                      };
+                    case "Out for Delivery":
+                      return {
+                        color: "#2196f3",
+                        borderColor: "#2196f3",
+                        bgColor: "#e3f2fd",
+                        icon: (
+                          <LocalShippingIcon sx={{ fontSize: 16, mr: 0.5 }} />
+                        ),
+                        text: "Out for Delivery",
+                      };
+                    default:
+                      return {
+                        color: "#9e9e9e",
+                        borderColor: "#9e9e9e",
+                        bgColor: "#f5f5f5",
+                        icon: <PendingIcon sx={{ fontSize: 16, mr: 0.5 }} />,
+                        text: "Pending",
+                      };
+                  }
+                };
+
+                const statusInfo = getStatusInfo(deliveryStatus);
+
+                return (
+                  <Grid
+                    item
+                    xs={12}
+                    sm={6}
+                    md={isTablet ? 6 : 4}
+                    lg={isTablet ? 4 : 3}
+                    key={order._id}>
+                    <Card
+                      sx={{
+                        height: "100%",
+                        display: "flex",
+                        flexDirection: "column",
+                        borderRadius: 2,
+                        overflow: "hidden",
+                        boxShadow: 2,
+                        transition: "transform 0.2s, box-shadow 0.2s",
+                        "&:hover": {
+                          transform: "translateY(-4px)",
+                          boxShadow: 4,
+                        },
+                        border: `1px solid ${statusInfo.borderColor}`,
+                        borderLeft: `6px solid ${statusInfo.borderColor}`,
+                      }}>
+                      {/* Header with Order ID and Status */}
                       <Box
                         sx={{
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "space-between",
-                          mb: 2,
+                          backgroundColor: statusInfo.bgColor,
+                          p: 1.5,
+                          borderBottom: `1px solid ${statusInfo.borderColor}`,
                         }}>
-                        <Typography variant="h6" fontWeight="bold">
-                          Order #{order._id.slice(-6).toUpperCase()}
-                        </Typography>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                          <OrdersIcon
+                            sx={{
+                              color: statusInfo.color,
+                              mr: 1,
+                              fontSize: 20,
+                            }}
+                          />
+                          <Typography
+                            variant="subtitle2"
+                            fontWeight="bold"
+                            color="text.primary">
+                            #{order._id.slice(-6).toUpperCase()}
+                          </Typography>
+                        </Box>
                         <Box
                           sx={{
                             display: "flex",
                             alignItems: "center",
-                            backgroundColor:
-                              order.status === "Out for Delivery"
-                                ? "info.light"
-                                : order.status === "In Transit"
-                                ? "warning.light"
-                                : order.status === "Delivered"
-                                ? "success.light"
-                                : order.status === "Failed Delivery"
-                                ? "error.light"
-                                : "inherit",
-                            borderRadius: 4,
-                            px: 1.5,
-                            py: 0.75,
+                            color: statusInfo.color,
+                            fontWeight: "bold",
+                            fontSize: "0.75rem",
                           }}>
-                          {order.status === "Out for Delivery" && (
-                            <LocalShippingIcon
-                              fontSize="small"
-                              sx={{ mr: 0.5 }}
-                            />
-                          )}
-                          {order.status === "In Transit" && (
-                            <PendingIcon fontSize="small" sx={{ mr: 0.5 }} />
-                          )}
-                          {order.status === "Delivered" && (
-                            <DeliveredIcon fontSize="small" sx={{ mr: 0.5 }} />
-                          )}
-                          {order.status === "Failed Delivery" && (
-                            <NotDeliveredIcon
-                              fontSize="small"
-                              sx={{ mr: 0.5 }}
-                            />
-                          )}
-                          <Typography variant="caption" fontWeight="bold">
-                            {order.status}
-                          </Typography>
+                          {statusInfo.icon}
+                          {statusInfo.text}
                         </Box>
                       </Box>
 
-                      <Typography variant="subtitle1" gutterBottom>
-                        <strong>Customer:</strong>{" "}
-                        {order.customerName || "No name provided"}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom>
-                        <strong>Placed:</strong> {formatDate(order.createdAt)}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom>
-                        <strong>Items:</strong> {order.items?.length || 0}
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        gutterBottom>
-                        <strong>Total:</strong> $
-                        {order.totalAmount?.toFixed(2) || "0.00"}
-                      </Typography>
-
-                      <Divider sx={{ my: 2 }} />
-
-                      <Typography
-                        variant="subtitle2"
-                        gutterBottom
-                        fontWeight="bold">
-                        Delivery Address:
-                      </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        paragraph>
-                        {formatAddress(order.address) || "No address provided"}
-                      </Typography>
-
-                      {order.assignedDrivers?.[0]?.notes && (
-                        <>
-                          <Typography
-                            variant="subtitle2"
-                            gutterBottom
-                            fontWeight="bold">
-                            Delivery Notes:
-                          </Typography>
+                      {/* Content */}
+                      <Box sx={{ p: 2 }}>
+                        {/* Customer */}
+                        <Box sx={{ mb: 2 }}>
                           <Typography
                             variant="body2"
                             color="text.secondary"
-                            paragraph>
-                            {order.assignedDrivers[0].notes}
+                            gutterBottom>
+                            Customer
                           </Typography>
-                        </>
-                      )}
-                    </CardContent>
+                          <Typography variant="body1" fontWeight="medium">
+                            {order.customerName || "No name provided"}
+                          </Typography>
+                        </Box>
 
-                    {/* Only show update button for in-transit and out for delivery orders */}
-                    {(order.status === "In Transit" ||
-                      order.status === "Out for Delivery") && (
-                      <Box sx={{ p: 3, pt: 0 }}>
-                        <Button
-                          variant="contained"
-                          fullWidth
-                          size="large"
-                          color="primary"
-                          onClick={() =>
-                            setDeliveryDialog({
-                              open: true,
-                              order,
-                              status: "Delivered",
-                              notes: "",
-                            })
-                          }
-                          sx={{
-                            borderRadius: 2,
-                            py: 1.5,
-                          }}>
-                          Update Delivery Status
-          </Button>
+                        <Grid container spacing={2} sx={{ mb: 1.5 }}>
+                          {/* Placed */}
+                          <Grid item xs={6}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              gutterBottom>
+                              Placed
+                            </Typography>
+                            <Typography variant="body2">
+                              {formatDate(order.createdAt)}
+                            </Typography>
+                          </Grid>
+
+                          {/* Items */}
+                          <Grid item xs={6}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              gutterBottom>
+                              Items
+                            </Typography>
+                            <Typography variant="body2">
+                              {order.items?.length || 0}
+                            </Typography>
+                          </Grid>
+                        </Grid>
+
+                        {/* Total Amount */}
+                        <Box sx={{ mb: 1.5 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            gutterBottom>
+                            Total Amount
+                          </Typography>
+                          <Typography variant="h6" fontWeight="bold">
+                            ${order.totalAmount?.toFixed(2) || "0.00"}
+                          </Typography>
+                        </Box>
+
+                        <Divider sx={{ my: 1.5 }} />
+
+                        {/* Delivery Address */}
+                        <Box sx={{ mb: 1.5 }}>
+                          <Typography
+                            variant="body2"
+                            color="text.secondary"
+                            gutterBottom>
+                            Delivery Address
+                          </Typography>
+                          <Typography variant="body2">
+                            {formatAddress(order.address) ||
+                              "No address provided"}
+                          </Typography>
+                        </Box>
+
+                        {/* Delivery Notes */}
+                        {driverAssignment?.notes && (
+                          <Box
+                            sx={{
+                              mt: 1.5,
+                              p: 1.5,
+                              backgroundColor: statusInfo.bgColor,
+                              borderRadius: 1,
+                              borderLeft: `3px solid ${statusInfo.borderColor}`,
+                            }}>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              gutterBottom>
+                              Delivery Notes
+                            </Typography>
+                            <Typography variant="body2">
+                              {driverAssignment.notes}
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
-                    )}
-                  </Card>
-                </Grid>
-              ))
-            )}
-          </Grid>
-        )}
+
+                      {/* Update Button */}
+                      {(deliveryStatus === "In Transit" ||
+                        deliveryStatus === "Out for Delivery") && (
+                        <Box sx={{ p: 2, pt: 0, mt: "auto" }}>
+                          <Button
+                            variant="contained"
+                            fullWidth
+                            onClick={() =>
+                              setDeliveryDialog({
+                                open: true,
+                                order,
+                                status: "Delivered",
+                                notes: "",
+                              })
+                            }
+                            sx={{
+                              py: 1,
+                              borderRadius: 1.5,
+                              textTransform: "none",
+                              backgroundColor: statusInfo.color,
+                              "&:hover": {
+                                backgroundColor: statusInfo.color,
+                                filter: "brightness(0.9)",
+                              },
+                            }}>
+                            Update Status
+                          </Button>
+                        </Box>
+                      )}
+                    </Card>
+                  </Grid>
+                );
+              })}
+            </Grid>
+          )}
+        </Box>
       </Box>
 
       {/* Delivery Status Update Dialog */}

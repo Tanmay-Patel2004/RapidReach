@@ -17,6 +17,13 @@ import {
   Alert,
   Snackbar,
   MenuItem,
+  Card,
+  CardContent,
+  useTheme,
+  alpha,
+  Chip,
+  Tooltip,
+  Fade,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -29,6 +36,9 @@ import {
   Search as SearchIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
+  FileDownload as ExportIcon,
+  FilterList as FilterIcon,
+  Refresh as RefreshIcon,
 } from "@mui/icons-material";
 import axios from "axios";
 import { useSelector } from "react-redux";
@@ -39,6 +49,7 @@ import {
 import logger from "../../utils/logger";
 
 const SectionPage = () => {
+  const theme = useTheme();
   const token = useSelector(selectToken);
   const userPermissions = useSelector(selectUserPermissions);
   const location = useLocation();
@@ -58,32 +69,43 @@ const SectionPage = () => {
   const [roles, setRoles] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
 
   // Configuration object for section details
   const sectionConfig = {
     "/users": {
       title: "User Management",
-      icon: <People sx={{ fontSize: 40, color: "#1976d2" }} />,
+      icon: <People sx={{ fontSize: 40, color: theme.palette.primary.main }} />,
       description: "Manage system users and their access",
     },
     "/roles": {
       title: "Role Management",
-      icon: <AdminPanelSettings sx={{ fontSize: 40, color: "#1976d2" }} />,
+      icon: (
+        <AdminPanelSettings
+          sx={{ fontSize: 40, color: theme.palette.primary.main }}
+        />
+      ),
       description: "Configure user roles and their capabilities",
     },
     "/permissions": {
       title: "Permission Management",
-      icon: <Security sx={{ fontSize: 40, color: "#1976d2" }} />,
+      icon: (
+        <Security sx={{ fontSize: 40, color: theme.palette.primary.main }} />
+      ),
       description: "Define and manage system permissions",
     },
     "/permission-relations": {
       title: "Permission Relations",
-      icon: <Security sx={{ fontSize: 40, color: "#1976d2" }} />,
+      icon: (
+        <Security sx={{ fontSize: 40, color: theme.palette.primary.main }} />
+      ),
       description: "Manage relationships between permissions",
     },
     "/warehouse": {
       title: "Warehouse Management",
-      icon: <Warehouse sx={{ fontSize: 40, color: "#1976d2" }} />,
+      icon: (
+        <Warehouse sx={{ fontSize: 40, color: theme.palette.primary.main }} />
+      ),
       description: "Manage warehouse operations and inventory",
     },
   };
@@ -128,12 +150,29 @@ const SectionPage = () => {
           params?.name
             ? params.name.charAt(0).toUpperCase() + params.name.slice(1)
             : "N/A",
+        renderCell: (params) => (
+          <Chip
+            label={params?.row?.role_id?.name || "N/A"}
+            size="small"
+            color={
+              params?.row?.role_id?.name === "super admin"
+                ? "primary"
+                : "default"
+            }
+          />
+        ),
       },
       {
         field: "isEmailVerified",
         headerName: "Verified",
         width: 100,
-        valueGetter: (params) => (params?.row?.isEmailVerified ? "Yes" : "No"),
+        renderCell: (params) => (
+          <Chip
+            label={params?.row?.isEmailVerified ? "Yes" : "No"}
+            size="small"
+            color={params?.row?.isEmailVerified ? "success" : "error"}
+          />
+        ),
       },
     ],
     "/permissions": [
@@ -170,6 +209,13 @@ const SectionPage = () => {
         field: "isActive",
         headerName: "Status",
         width: 120,
+        renderCell: (params) => (
+          <Chip
+            label={params.row.isActive ? "Active" : "Inactive"}
+            size="small"
+            color={params.row.isActive ? "success" : "default"}
+          />
+        ),
       },
     ],
     "/roles": [
@@ -186,7 +232,6 @@ const SectionPage = () => {
         width: 200,
       },
       { field: "description", headerName: "Description", width: 300 },
-      // { field: 'usersCount', headerName: 'Users', width: 130 }
     ],
     "/permission-relations": [
       {
@@ -221,6 +266,14 @@ const SectionPage = () => {
         field: "warehouseCode",
         headerName: "Warehouse Code",
         width: 150,
+        renderCell: (params) => (
+          <Chip
+            label={params.row.warehouseCode}
+            size="small"
+            color="primary"
+            variant="outlined"
+          />
+        ),
       },
       {
         field: "street",
@@ -458,24 +511,53 @@ const SectionPage = () => {
         flexDirection: "column",
         alignItems: "center",
         justifyContent: "center",
-        p: 3,
+        p: 5,
         textAlign: "center",
+        height: "300px",
       }}>
-      <Typography variant="h6" color="error" gutterBottom>
+      <Box
+        sx={{
+          bgcolor: alpha(theme.palette.error.main, 0.1),
+          p: 2,
+          borderRadius: "50%",
+          mb: 2,
+        }}>
+        <IconButton
+          color="error"
+          sx={{
+            p: 0,
+            cursor: "default",
+            "&:hover": { bgcolor: "transparent" },
+          }}>
+          <Security sx={{ fontSize: 40 }} />
+        </IconButton>
+      </Box>
+      <Typography variant="h6" color="error.main" gutterBottom>
         Error
       </Typography>
-      <Typography variant="body1" color="text.secondary">
+      <Typography
+        variant="body1"
+        color="text.secondary"
+        sx={{ maxWidth: "500px", mb: 3 }}>
         {message}
       </Typography>
-      {message.includes("login") && (
+      <Box sx={{ display: "flex", gap: 2 }}>
+        {message.includes("login") && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => navigate("/")}>
+            Go to Login
+          </Button>
+        )}
         <Button
-          variant="contained"
+          variant="outlined"
           color="primary"
-          sx={{ mt: 2 }}
-          onClick={() => navigate("/")}>
-          Go to Login
+          startIcon={<RefreshIcon />}
+          onClick={fetchData}>
+          Try Again
         </Button>
-      )}
+      </Box>
     </Box>
   );
 
@@ -486,11 +568,15 @@ const SectionPage = () => {
         <Box
           sx={{
             display: "flex",
+            flexDirection: "column",
             justifyContent: "center",
             alignItems: "center",
-            height: "100%",
+            height: "300px",
           }}>
-          <CircularProgress />
+          <CircularProgress size={40} thickness={4} />
+          <Typography variant="body2" sx={{ mt: 2, color: "text.secondary" }}>
+            Loading data...
+          </Typography>
         </Box>
       );
     }
@@ -501,36 +587,112 @@ const SectionPage = () => {
 
     if (!data.length) {
       return (
-        <Box sx={{ textAlign: "center", p: 3 }}>
-          <Typography variant="body1" color="text.secondary">
-            No data available
+        <Box
+          sx={{
+            textAlign: "center",
+            p: 5,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            alignItems: "center",
+            height: "300px",
+            color: "text.secondary",
+          }}>
+          <Box
+            sx={{
+              bgcolor: alpha(theme.palette.primary.main, 0.1),
+              p: 2,
+              borderRadius: "50%",
+              mb: 2,
+            }}>
+            {currentSection.icon}
+          </Box>
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No {getBreadcrumbText(location.pathname).toLowerCase()} found
           </Typography>
+          <Typography variant="body2">
+            Get started by adding your first{" "}
+            {getBreadcrumbText(location.pathname).slice(0, -1).toLowerCase()}
+          </Typography>
+          <Button
+            variant="contained"
+            startIcon={<AddIcon />}
+            onClick={handleAddNew}
+            sx={{ mt: 3 }}>
+            Add New {getBreadcrumbText(location.pathname).slice(0, -1)}
+          </Button>
         </Box>
       );
     }
 
+    // Filter data if search term exists
+    const filteredData = searchTerm
+      ? data.filter((row) => {
+          // Basic search through all string properties
+          return Object.keys(row).some((key) => {
+            if (typeof row[key] === "string") {
+              return row[key].toLowerCase().includes(searchTerm.toLowerCase());
+            }
+            return false;
+          });
+        })
+      : data;
+
     return (
       <DataGrid
-        rows={data}
+        rows={filteredData}
         columns={enhancedColumnDefinitions[location.pathname] || []}
         pageSize={10}
         rowsPerPageOptions={[10, 25, 50]}
         checkboxSelection
         disableSelectionOnClick
         autoHeight
+        loading={loading}
         sx={{
-          "& .MuiDataGrid-root": {
-            border: "none",
+          border: "none",
+          borderRadius: 2,
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor:
+              theme.palette.mode === "light"
+                ? alpha(theme.palette.primary.main, 0.05)
+                : alpha(theme.palette.primary.dark, 0.15),
+            borderRadius: "8px 8px 0 0",
+          },
+          "& .MuiDataGrid-row": {
+            "&:hover": {
+              backgroundColor:
+                theme.palette.mode === "light"
+                  ? alpha(theme.palette.primary.main, 0.04)
+                  : alpha(theme.palette.primary.dark, 0.08),
+            },
+            "&.Mui-selected": {
+              backgroundColor:
+                theme.palette.mode === "light"
+                  ? alpha(theme.palette.primary.main, 0.08)
+                  : alpha(theme.palette.primary.dark, 0.16),
+              "&:hover": {
+                backgroundColor:
+                  theme.palette.mode === "light"
+                    ? alpha(theme.palette.primary.main, 0.12)
+                    : alpha(theme.palette.primary.dark, 0.24),
+              },
+            },
+          },
+          "& .MuiDataGrid-footerContainer": {
+            borderTop: `1px solid ${theme.palette.divider}`,
+          },
+          "& .MuiDataGrid-main": {
+            width: "100%",
+          },
+          "& .MuiDataGrid-columnHeader": {
+            py: 1.5,
+          },
+          "& .MuiDataGrid-columnHeaderTitle": {
+            fontWeight: 600,
           },
           "& .MuiDataGrid-cell": {
-            borderBottom: "1px solid #f0f0f0",
-          },
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "#f5f5f5",
-            borderBottom: "none",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: "#fff",
+            fontSize: "0.875rem",
+            py: 1,
           },
         }}
       />
@@ -986,8 +1148,8 @@ const SectionPage = () => {
         sx={{
           px: { xs: 2, sm: 3, md: 4 },
           py: 2,
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
+          backgroundColor: theme.palette.background.paper,
+          borderBottom: `1px solid ${theme.palette.divider}`,
           width: "100%",
         }}>
         <Breadcrumbs>
@@ -1011,18 +1173,46 @@ const SectionPage = () => {
         sx={{
           px: { xs: 2, sm: 3, md: 4 },
           py: 3,
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
+          backgroundColor: theme.palette.background.paper,
+          borderBottom: `1px solid ${theme.palette.divider}`,
           width: "100%",
         }}>
-        <Paper
+        <Card
           elevation={0}
           sx={{
-            p: { xs: 2, sm: 3, md: 4 }, // Responsive padding
-            background: "linear-gradient(135deg, #f5f7fa 0%, #e4e8eb 100%)",
+            p: { xs: 2, sm: 3, md: 4 },
+            background: theme.palette.background.gradient,
             borderRadius: 2,
             width: "100%",
+            overflow: "hidden",
+            position: "relative",
           }}>
+          {/* Add decorative circles for design */}
+          <Box
+            sx={{
+              position: "absolute",
+              right: -50,
+              top: -50,
+              width: 200,
+              height: 200,
+              borderRadius: "50%",
+              background: alpha(theme.palette.primary.main, 0.1),
+              zIndex: 0,
+            }}
+          />
+          <Box
+            sx={{
+              position: "absolute",
+              right: 100,
+              bottom: -70,
+              width: 150,
+              height: 150,
+              borderRadius: "50%",
+              background: alpha(theme.palette.primary.main, 0.05),
+              zIndex: 0,
+            }}
+          />
+
           {/* Title Section */}
           <Box
             sx={{
@@ -1030,14 +1220,16 @@ const SectionPage = () => {
               flexDirection: { xs: "column", sm: "row" },
               alignItems: { xs: "center", sm: "flex-start" },
               gap: 3,
+              position: "relative",
+              zIndex: 1,
             }}>
             {/* Icon */}
             <Box
               sx={{
                 p: 2,
                 borderRadius: "50%",
-                background: "white",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.1)",
+                background: theme.palette.background.paper,
+                boxShadow: theme.shadows[3],
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -1052,17 +1244,22 @@ const SectionPage = () => {
                 component="h1"
                 sx={{
                   fontWeight: 600,
-                  color: "#1a3b61",
+                  color: theme.palette.text.primary,
                   mb: 1,
                 }}>
                 {currentSection.title}
               </Typography>
-              <Typography variant="subtitle1" sx={{ color: "#5c7184" }}>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  color: theme.palette.text.secondary,
+                  maxWidth: "600px",
+                }}>
                 {currentSection.description}
               </Typography>
             </Box>
           </Box>
-        </Paper>
+        </Card>
       </Box>
 
       {/* Actions Row */}
@@ -1070,8 +1267,8 @@ const SectionPage = () => {
         sx={{
           px: { xs: 2, sm: 3, md: 4 },
           py: 2,
-          backgroundColor: "white",
-          borderBottom: "1px solid #e0e0e0",
+          backgroundColor: theme.palette.background.paper,
+          borderBottom: `1px solid ${theme.palette.divider}`,
           width: "100%",
           overflowX: "hidden",
         }}>
@@ -1086,23 +1283,59 @@ const SectionPage = () => {
             maxWidth: "100%",
             overflowX: "hidden",
           }}>
-          {/* Add New Button */}
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleAddNew}
+          {/* Left side - Add and action buttons */}
+          <Box
             sx={{
-              backgroundColor: "#1976d2",
-              "&:hover": {
-                backgroundColor: "#1565c0",
-              },
-              height: "48px",
-              px: 3,
-              whiteSpace: "nowrap",
-              minWidth: "fit-content",
+              display: "flex",
+              gap: 1,
+              flexWrap: "wrap",
             }}>
-            Add New {getBreadcrumbText(location.pathname).slice(0, -1)}
-          </Button>
+            {/* Add New Button */}
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleAddNew}
+              sx={{
+                height: "40px",
+                px: 2,
+                whiteSpace: "nowrap",
+                minWidth: "fit-content",
+                borderRadius: 1,
+              }}>
+              Add New
+            </Button>
+
+            {/* Refresh Button */}
+            <Tooltip title="Refresh data">
+              <Button
+                variant="outlined"
+                color="primary"
+                onClick={fetchData}
+                sx={{
+                  height: "40px",
+                  minWidth: "40px",
+                  width: "40px",
+                  p: 0,
+                }}>
+                <RefreshIcon fontSize="small" />
+              </Button>
+            </Tooltip>
+
+            {/* Export Button */}
+            <Tooltip title="Export data">
+              <Button
+                variant="outlined"
+                color="primary"
+                sx={{
+                  height: "40px",
+                  minWidth: "40px",
+                  width: "40px",
+                  p: 0,
+                }}>
+                <ExportIcon fontSize="small" />
+              </Button>
+            </Tooltip>
+          </Box>
 
           {/* Search Bar */}
           <Box
@@ -1110,7 +1343,7 @@ const SectionPage = () => {
               display: "flex",
               gap: 1,
               flex: { xs: "1", md: "0 1 400px" },
-              minWidth: 0, // This is important for text overflow
+              minWidth: 0,
               width: "100%",
               maxWidth: "100%",
               overflowX: "hidden",
@@ -1119,7 +1352,9 @@ const SectionPage = () => {
               fullWidth
               variant="outlined"
               placeholder={getSearchPlaceholder()}
-              size="medium"
+              size="small"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -1127,25 +1362,18 @@ const SectionPage = () => {
                   </InputAdornment>
                 ),
                 sx: {
-                  backgroundColor: "#f5f5f5",
-                  "&:hover": {
-                    backgroundColor: "#f0f0f0",
-                  },
-                  "& .MuiInputBase-root": {
-                    maxWidth: "100%",
-                  },
+                  borderRadius: 1,
                 },
               }}
             />
             <Button
               variant="contained"
               sx={{
-                backgroundColor: "#1976d2",
-                "&:hover": {
-                  backgroundColor: "#1565c0",
-                },
-                minWidth: "100px",
+                height: "40px",
+                minWidth: "40px",
+                px: 3,
                 whiteSpace: "nowrap",
+                borderRadius: 1,
               }}>
               Search
             </Button>
@@ -1160,15 +1388,16 @@ const SectionPage = () => {
           width: "100%",
           overflowX: "auto",
         }}>
-        <Paper
+        <Card
           sx={{
             width: "100%",
-            p: { xs: 2, sm: 3 },
+            p: { xs: 1, sm: 0 },
             minHeight: "calc(100vh - 350px)",
             overflowX: "auto",
+            boxShadow: theme.shadows[1],
           }}>
           {renderContent()}
-        </Paper>
+        </Card>
       </Box>
 
       {/* Add Dialog */}
@@ -1176,12 +1405,16 @@ const SectionPage = () => {
         open={openDialog}
         onClose={handleDialogClose}
         maxWidth="sm"
-        fullWidth>
-        <DialogTitle>
-          {dialogMode === "add" ? "Add New" : "Edit"}{" "}
-          {getBreadcrumbText(location.pathname).slice(0, -1)}
+        fullWidth
+        TransitionComponent={Fade}
+        transitionDuration={300}>
+        <DialogTitle sx={{ pb: 1 }}>
+          <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+            {dialogMode === "add" ? "Add New" : "Edit"}{" "}
+            {getBreadcrumbText(location.pathname).slice(0, -1)}
+          </Typography>
         </DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ pb: 0 }}>
           <Box sx={{ pt: 2 }}>
             {getFormFields().map((field) => (
               <TextField
@@ -1206,6 +1439,12 @@ const SectionPage = () => {
                 inputProps={{
                   minLength: field.minLength,
                   pattern: field.pattern,
+                }}
+                sx={{
+                  mb: 2,
+                  "& .MuiOutlinedInput-root": {
+                    borderRadius: 1,
+                  },
                 }}>
                 {field.type === "select" &&
                   (field.name === "role_id"
@@ -1227,14 +1466,27 @@ const SectionPage = () => {
             ))}
           </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDialogClose}>Cancel</Button>
+        <DialogActions sx={{ px: 3, py: 2 }}>
+          <Button onClick={handleDialogClose} variant="outlined">
+            Cancel
+          </Button>
           <Button
             onClick={handleSubmit}
             variant="contained"
             color="primary"
-            disabled={!formData || Object.keys(formData).length === 0}>
-            {dialogMode === "add" ? "Add" : "Save"}
+            disabled={
+              submitting || !formData || Object.keys(formData).length === 0
+            }>
+            {submitting ? (
+              <>
+                <CircularProgress size={16} sx={{ mr: 1 }} />
+                {dialogMode === "add" ? "Adding..." : "Saving..."}
+              </>
+            ) : dialogMode === "add" ? (
+              "Add"
+            ) : (
+              "Save"
+            )}
           </Button>
         </DialogActions>
       </Dialog>
@@ -1248,6 +1500,7 @@ const SectionPage = () => {
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
+          variant="filled"
           sx={{ width: "100%" }}>
           {snackbar.message}
         </Alert>

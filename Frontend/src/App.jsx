@@ -94,19 +94,11 @@ function App() {
   }, [userRole]);
 
   const ProtectedRoute = ({ children }) => {
-    console.log("ProtectedRoute check, isAuthenticated:", isAuthenticated);
-
     if (!isAuthenticated) {
-      console.log("Not authenticated, redirecting to login");
       return <Navigate to="/" replace />;
     }
-
-    console.log("Authentication passed, rendering protected content");
     return children;
   };
-
-  console.log("Rendering App component, auth status:", isAuthenticated);
-  console.log("User role:", userRole);
 
   if (!isAuthenticated) {
     return (
@@ -120,21 +112,19 @@ function App() {
 
   return (
     <AuthProvider>
-      <Box sx={{ display: "contents" }}>
+      <Box sx={{ display: "flex" }}>
         <Navbar />
         <Box
           component="main"
           sx={{
             flexGrow: 1,
-            width: "100%",
-            ml: { sm: "250px" },
-            backgroundColor: "#f5f5f5",
+            width: { sm: `calc(100% - 250px)` },
+            ml: { xs: 0, sm: "250px" },
+            backgroundColor: "background.default",
             minHeight: "100vh",
             p: 0,
-            overflowX: "hidden",
           }}>
           <Toolbar />
-          {console.log("Rendering routes")}
           <Routes>
             <Route
               path="/dashboard"
@@ -240,7 +230,6 @@ function App() {
               path="/reports"
               element={
                 <ProtectedRoute>
-                  {console.log("Reports route accessed")}
                   <ReportPage />
                 </ProtectedRoute>
               }
