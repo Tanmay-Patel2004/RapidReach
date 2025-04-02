@@ -14,7 +14,7 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:3000/api", 
+        url: "http://localhost:3000/api",
         description: "Development server",
       },
     ],
@@ -331,6 +331,65 @@ const options = {
             },
           },
         },
+        MonthlyReport: {
+          type: "object",
+          properties: {
+            month: {
+              type: "integer",
+              description: "Month number (1-12)",
+              minimum: 1,
+              maximum: 12,
+            },
+            year: {
+              type: "integer",
+              description: "Year (2000-2100)",
+              minimum: 2000,
+              maximum: 2100,
+            },
+            totalOrders: {
+              type: "integer",
+              description: "Total number of orders in the month",
+            },
+            totalAmount: {
+              type: "number",
+              description: "Total amount of all orders in the month",
+            },
+            orders: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  orderId: {
+                    type: "string",
+                    description: "Order ID",
+                  },
+                  date: {
+                    type: "string",
+                    format: "date-time",
+                    description: "Order date",
+                  },
+                  customer: {
+                    type: "string",
+                    description: "Customer name",
+                  },
+                  amount: {
+                    type: "number",
+                    description: "Order amount",
+                  },
+                  status: {
+                    type: "string",
+                    description: "Order status",
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        UnauthorizedError: {
+          description: "Access token is missing or invalid",
+        },
       },
     },
     security: [
@@ -388,6 +447,114 @@ const options = {
         description: "User activity tracking endpoints",
       },
     ],
+    paths: {
+      "/orders/report": {
+        get: {
+          tags: ["Orders"],
+          summary: "Get monthly order report",
+          description: "Retrieve a report of orders for a specific month and year",
+          security: [{ bearerAuth: [] }],
+          parameters: [
+            {
+              in: "query",
+              name: "month",
+              required: true,
+              schema: {
+                type: "integer",
+                minimum: 1,
+                maximum: 12,
+              },
+              description: "Month number (1-12)",
+            },
+            {
+              in: "query",
+              name: "year",
+              required: true,
+              schema: {
+                type: "integer",
+                minimum: 2000,
+                maximum: 2100,
+              },
+              description: "Year (2000-2100)",
+            },
+          ],
+          responses: {
+            200: {
+              description: "Monthly report generated successfully",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      code: {
+                        type: "integer",
+                        example: 200,
+                      },
+                      message: {
+                        type: "string",
+                        example: "Monthly report generated successfully",
+                      },
+                      data: {
+                        $ref: "#/components/schemas/MonthlyReport",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            400: {
+              description: "Invalid month or year parameters",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      code: {
+                        type: "integer",
+                        example: 400,
+                      },
+                      message: {
+                        type: "string",
+                        example: "Invalid month or year. Month should be 1-12 and year should be between 2000-2100",
+                      },
+                      data: {
+                        type: "null",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            401: {
+              $ref: "#/components/responses/UnauthorizedError",
+            },
+            500: {
+              description: "Internal server error",
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      code: {
+                        type: "integer",
+                        example: 500,
+                      },
+                      message: {
+                        type: "string",
+                        example: "Internal server error",
+                      },
+                      data: {
+                        type: "null",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   apis: ["./routes/*.js", "./controllers/*.js", "./models/*.js"],
 };
