@@ -229,6 +229,14 @@ function App() {
               }
             />
             <Route
+              path="/order"
+              element={
+                <ProtectedRoute>
+                  <OrdersPage />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/reports"
               element={
                 <ProtectedRoute>

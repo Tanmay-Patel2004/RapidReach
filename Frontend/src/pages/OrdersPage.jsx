@@ -24,12 +24,18 @@ import {
   CheckCircle as DeliveredIcon,
   Pending as PendingIcon,
 } from "@mui/icons-material";
-import { selectAuthToken } from "../store/slices/authSlice";
+import {
+  selectAuthToken,
+  selectUser,
+  selectUserRole,
+} from "../store/slices/authSlice";
 import logger from "../utils/logger";
 import { useTheme } from "@mui/material/styles";
 
 const OrdersPage = () => {
   const token = useSelector(selectAuthToken);
+  const user = useSelector(selectUser);
+  const userRole = useSelector(selectUserRole);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -52,19 +58,43 @@ const OrdersPage = () => {
       setLoading(true);
       setError(null);
 
-      const response = await fetch("http://localhost:3000/api/orders/orders", {
+      // Try the main endpoint first
+      const response = await fetch("http://localhost:3000/api/orders", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error("Failed to fetch orders");
+        throw new Error(
+          `Failed to fetch orders: ${response.status} ${response.statusText}`
+        );
       }
 
       const result = await response.json();
-      setOrders(sortOrdersByDate(result));
+
+      // Handle different response formats from the API
+      let orderData;
+      if (Array.isArray(result)) {
+        // API returns an array directly
+        orderData = result;
+      } else if (result.data && Array.isArray(result.data)) {
+        // API returns {code, message, data} format where data is the array
+        orderData = result.data;
+      } else if (result.code === 200 && result.data) {
+        // API returns {code, message, data} format where data might be in a nested property
+        orderData = Array.isArray(result.data.orders)
+          ? result.data.orders
+          : result.data;
+      } else {
+        // Fallback
+        orderData = [];
+        console.warn("Unknown response format from API:", result);
+      }
+
+      setOrders(sortOrdersByDate(orderData));
     } catch (err) {
+      console.error("Error fetching orders:", err);
       setError(err.message);
       logger.error("Error fetching orders", { error: err.message });
     } finally {
@@ -73,6 +103,7 @@ const OrdersPage = () => {
   };
 
   useEffect(() => {
+    console.log("OrdersPage: Fetching orders...");
     fetchOrders();
   }, [token]);
 
@@ -114,6 +145,15 @@ const OrdersPage = () => {
       default:
         return "default";
     }
+  };
+
+  const isAdmin = () => {
+    // Check if user has Super Admin role from either structure
+    return (
+      userRole?.name === "Super Admin" ||
+      user?.role?.name === "Super Admin" ||
+      user?.role_id?.name === "Super Admin"
+    );
   };
 
   const renderOrders = () => {
@@ -298,7 +338,7 @@ const OrdersPage = () => {
             </Grid>
           </Box>
 
-          {user?.role_id?.name === "Super Admin" &&
+          {isAdmin() &&
             (order.status === "Pending" || order.status === "Processing") && (
               <Box sx={{ mt: 2 }}>
                 <Button

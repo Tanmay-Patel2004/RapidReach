@@ -56,6 +56,8 @@ const SectionPage = () => {
     severity: "success",
   });
   const [roles, setRoles] = useState([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
   // Configuration object for section details
   const sectionConfig = {
@@ -208,13 +210,13 @@ const SectionPage = () => {
       },
     ],
     "/warehouse": [
-      {
-        field: "id",
-        headerName: "ID",
-        width: 150,
-        valueGetter: (params) =>
-          params ? `WH-${params.slice(-6).toUpperCase()}` : "N/A",
-      },
+      // {
+      //   field: "id",
+      //   headerName: "ID",
+      //   width: 150,
+      //   valueGetter: (params) =>
+      //     params.value ? `WH-${params.value.slice(-6).toUpperCase()}` : "N/A",
+      // },
       {
         field: "warehouseCode",
         headerName: "Warehouse Code",
@@ -229,28 +231,16 @@ const SectionPage = () => {
         field: "province",
         headerName: "Province",
         width: 150,
-        valueGetter: (params) => {
-          if (!params || !params.row || !params.row.address) return "N/A";
-          return params.row.address.province || "N/A";
-        },
       },
       {
         field: "country",
         headerName: "Country",
         width: 150,
-        valueGetter: (params) => {
-          if (!params || !params.row || !params.row.address) return "N/A";
-          return params.row.address.country || "N/A";
-        },
       },
       {
         field: "zipCode",
         headerName: "ZIP Code",
         width: 120,
-        valueGetter: (params) => {
-          if (!params || !params.row || !params.row.address) return "N/A";
-          return params.row.address.zipCode || "N/A";
-        },
       },
     ],
   };
@@ -382,11 +372,55 @@ const SectionPage = () => {
       }
 
       const response = await axiosInstance.get(endpoint.url);
+
+      // Add logging for debugging warehouse data
+      if (location.pathname === "/warehouse") {
+        logger.info("Warehouse API response:", {
+          status: response.status,
+          statusText: response.statusText,
+          dataCode: response.data?.code,
+          dataCount: response.data?.data?.length,
+          sampleData: response.data?.data?.[0],
+        });
+      }
+
       if (response.data.code === 200) {
-        const processedData = (response.data.data || []).map((row) => ({
+        let processedData = (response.data.data || []).map((row) => ({
           ...row,
           id: row._id,
         }));
+
+        // Special processing for warehouse data
+        if (location.pathname === "/warehouse") {
+          // Enhanced logging to debug address data
+          logger.info("Raw warehouse data:", {
+            count: processedData.length,
+            sampleData: processedData[0],
+            addressSample: processedData[0]?.address,
+          });
+
+          // For warehouse data, flatten the address object for proper display in DataGrid
+          processedData = processedData.map((warehouse) => {
+            // Create a flattened version that keeps both the original and adds direct access properties
+            const flattenedWarehouse = {
+              ...warehouse,
+              // Add direct access properties for the DataGrid to use
+              street: warehouse.address?.street || "N/A",
+              province: warehouse.address?.province || "N/A",
+              country: warehouse.address?.country || "N/A",
+              zipCode: warehouse.address?.zipCode || "N/A",
+            };
+
+            return flattenedWarehouse;
+          });
+
+          // Log the processed data
+          logger.info("Processed warehouse data with flattened address:", {
+            count: processedData.length,
+            sample: processedData[0],
+          });
+        }
+
         setData(processedData);
       } else {
         throw new Error(response.data.message || "Failed to fetch data");
@@ -548,106 +582,127 @@ const SectionPage = () => {
   };
 
   // Update handleSubmit function
-const handleSubmit = async () => {
-  try {
-    const endpoint = apiEndpoints[location.pathname];
-    let response;
-    let dataToSubmit = { ...formData };
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+      setSubmitError(null);
 
-    // Special handling for user data
-    if (location.pathname === "/users") {
-      if (dataToSubmit.dateOfBirth) {
-        dataToSubmit.dateOfBirth = new Date(
-          dataToSubmit.dateOfBirth
-        ).toISOString();
+      const endpoint = apiEndpoints[location.pathname];
+      if (!endpoint) {
+        throw new Error("Invalid endpoint");
       }
 
-      if (dialogMode === "edit" && !dataToSubmit.password) {
-        delete dataToSubmit.password;
-      }
+      let response;
+      let dataToSubmit = { ...formData };
 
-      if (dataToSubmit.role_id) {
-        dataToSubmit.role_id = dataToSubmit.role_id;
-      } else {
-        dataToSubmit.role_id = "67bb9c6aee11822f1295c3e3";
-      }
+      // Add any special handling for specific endpoints here
+      if (location.pathname === "/users") {
+        // Handle user-specific data transformation
+        if (
+          dialogMode === "add" &&
+          dataToSubmit.password !== dataToSubmit.confirmPassword
+        ) {
+          setSubmitError("Passwords do not match");
+          return;
+        }
 
-      if (dataToSubmit.address) {
-        dataToSubmit.address = {
-          street: dataToSubmit.address.street || "",
-          unitNumber: dataToSubmit.address.unitNumber || "",
-          province: dataToSubmit.address.province || "",
-          country: dataToSubmit.address.country || "",
-          zipCode: dataToSubmit.address.zipCode || "",
+        // Don't send confirmPassword to API
+        delete dataToSubmit.confirmPassword;
+
+        // Set default values for new users
+        dataToSubmit = {
+          ...dataToSubmit,
+          isEmailVerified: false,
         };
       }
 
-      dataToSubmit = {
-        ...dataToSubmit,
-        isEmailVerified: false,
-      };
-    }
+      // Special handling for warehouse data
+      if (location.pathname === "/warehouse") {
+        // Log the warehouse data being submitted
+        logger.info("Preparing warehouse data submission:", dataToSubmit);
 
-    // Special handling for warehouse data
-    if (location.pathname === "/warehouse") {
-      if (dataToSubmit.warehouseCode) {
-        dataToSubmit.warehouseCode = dataToSubmit.warehouseCode.toUpperCase();
+        // Ensure warehouseCode is uppercase
+        if (dataToSubmit.warehouseCode) {
+          dataToSubmit.warehouseCode = dataToSubmit.warehouseCode.toUpperCase();
+        }
+
+        // Ensure address is properly structured as a nested object
+        const addressFields = {};
+
+        // Extract address fields from dataToSubmit and structure them properly
+        for (const key in dataToSubmit) {
+          if (key.startsWith("address.")) {
+            const addressField = key.split(".")[1];
+            addressFields[addressField] = dataToSubmit[key];
+            // Remove the flat address.field property
+            delete dataToSubmit[key];
+          }
+        }
+
+        // Only set address if we have address fields
+        if (Object.keys(addressFields).length > 0) {
+          dataToSubmit.address = addressFields;
+        }
+
+        // Log the restructured data
+        logger.info("Restructured warehouse data:", dataToSubmit);
       }
-    }
 
-    if (dialogMode === "add") {
-      response = await axiosInstance.post(endpoint.url, dataToSubmit);
-      console.log("Add response:", response.data); // Debug log
-    } else {
-      response = await axiosInstance.put(
-        `${endpoint.url}/${selectedItem.id}`,
-        dataToSubmit
-      );
-      console.log("Update response:", response.data); // Debug log
-    }
+      if (dialogMode === "add") {
+        response = await axiosInstance.post(endpoint.url, dataToSubmit);
+        console.log("Add response:", response.data); // Debug log
+      } else {
+        response = await axiosInstance.put(
+          `${endpoint.url}/${selectedItem.id}`,
+          dataToSubmit
+        );
+        console.log("Update response:", response.data); // Debug log
+      }
 
-    // Check the response status
-    if (response.status === 200 || response.status === 201) {
-      // Handle both 200 and 201 as success
-      // Close the dialog and clear the form
-      setOpenDialog(false);
-      setSelectedItem(null);
-      setFormData({});
+      // Check the response status
+      if (response.status === 200 || response.status === 201) {
+        // Handle both 200 and 201 as success
+        // Close the dialog and clear the form
+        setOpenDialog(false);
+        setSelectedItem(null);
+        setFormData({});
 
-      // Show success message
+        // Show success message
+        setSnackbar({
+          open: true,
+          message:
+            dialogMode === "add"
+              ? `New ${getBreadcrumbText(location.pathname)
+                  .slice(0, -1)
+                  .toLowerCase()} added successfully!`
+              : `${getBreadcrumbText(location.pathname).slice(
+                  0,
+                  -1
+                )} updated successfully!`,
+          severity: "success",
+        });
+
+        // Refresh the data immediately
+        await fetchData();
+      } else {
+        // If the response status is not 200 or 201, treat it as an error
+        setSnackbar({
+          open: true,
+          message: response.data.message || "Failed to save data",
+          severity: "error",
+        });
+      }
+    } catch (error) {
+      console.error("Submission error:", error);
       setSnackbar({
         open: true,
-        message:
-          dialogMode === "add"
-            ? `New ${getBreadcrumbText(location.pathname)
-                .slice(0, -1)
-                .toLowerCase()} added successfully!`
-            : `${getBreadcrumbText(location.pathname).slice(
-                0,
-                -1
-              )} updated successfully!`,
-        severity: "success",
-      });
-
-      // Refresh the data immediately
-      await fetchData();
-    } else {
-      // If the response status is not 200 or 201, treat it as an error
-      setSnackbar({
-        open: true,
-        message: response.data.message || "Failed to save data",
+        message: error.message || "An error occurred while saving the data",
         severity: "error",
       });
+    } finally {
+      setSubmitting(false);
     }
-  } catch (error) {
-    console.error("Submission error:", error);
-    setSnackbar({
-      open: true,
-      message: error.message || "An error occurred while saving the data",
-      severity: "error",
-    });
-  }
-};
+  };
 
   // Function to handle delete
   const handleDelete = async (id) => {

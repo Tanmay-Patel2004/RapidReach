@@ -320,7 +320,7 @@ const DriverDashboard = () => {
             variant="fullWidth"
             sx={{
               "& .MuiTabs-indicator": {
-                backgroundColor: "primary.main",
+              backgroundColor: "primary.main",
                 height: 3,
               },
             }}>
@@ -393,18 +393,18 @@ const DriverDashboard = () => {
               availableOrders.map((order) => (
                 <Grid item xs={12} sm={6} md={4} lg={3} key={order._id}>
                   <Card
-                    sx={{
+            sx={{
                       height: "100%",
                       display: "flex",
                       flexDirection: "column",
                       borderRadius: 2,
                       boxShadow: 3,
                       transition: "transform 0.2s, box-shadow 0.2s",
-                      "&:hover": {
+              "&:hover": {
                         transform: "translateY(-4px)",
                         boxShadow: 6,
-                      },
-                    }}>
+              },
+            }}>
                     <CardContent sx={{ flexGrow: 1, p: 3 }}>
                       <Box
                         sx={{
@@ -678,7 +678,7 @@ const DriverDashboard = () => {
                             py: 1.5,
                           }}>
                           Update Delivery Status
-                        </Button>
+          </Button>
                       </Box>
                     )}
                   </Card>
