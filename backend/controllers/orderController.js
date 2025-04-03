@@ -10,7 +10,7 @@ const httpStatus = require('../Helper/http_status');
 // @access  Private
 const checkout = async (req, res) => {
   try {
-    const { products, address, email, phone, customerName, subtotal, tax, totalAmount } = req.body;
+    const { products, address, email, phone, customerName, subtotal, tax, totalAmount, paymentMethod, paymentStatus } = req.body;
     const userId = req.user._id;
 
     if (!products || products.length === 0) {
@@ -47,7 +47,9 @@ const checkout = async (req, res) => {
       subtotal: subtotal || totalAmount, // Fallback for backward compatibility
       tax: tax || 0, // Default to 0 if not provided
       taxRate: 0.13, // 13% tax rate
-      totalAmount
+      totalAmount,
+      paymentMethod: paymentMethod || 'card', // Default to card if not provided
+      paymentStatus: paymentStatus || (paymentMethod === 'cod' ? 'pending' : 'paid') // Default status based on payment method
     });
 
     // Deduct product quantities
