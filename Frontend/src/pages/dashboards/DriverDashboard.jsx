@@ -680,8 +680,8 @@ const DriverDashboard = () => {
               <Typography variant="body2" color="text.secondary">
                 You haven't claimed any orders for delivery yet.
               </Typography>
-              <Button
-                variant="outlined"
+          <Button
+            variant="outlined"
                 onClick={() => setActiveTab(0)}
                 sx={{ mt: 2 }}>
                 Browse Available Orders
@@ -921,18 +921,18 @@ const DriverDashboard = () => {
                                 notes: "",
                               })
                             }
-                            sx={{
+            sx={{
                               py: 1,
                               borderRadius: 1.5,
                               textTransform: "none",
                               backgroundColor: statusInfo.color,
-                              "&:hover": {
+              "&:hover": {
                                 backgroundColor: statusInfo.color,
                                 filter: "brightness(0.9)",
-                              },
-                            }}>
+              },
+            }}>
                             Update Status
-                          </Button>
+          </Button>
                         </Box>
                       )}
                     </Card>

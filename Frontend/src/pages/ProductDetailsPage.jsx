@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import {
   Box,
   Container,
@@ -16,30 +16,39 @@ import {
   CardMedia,
   useTheme,
   useMediaQuery,
-} from '@mui/material';
+  Snackbar,
+} from "@mui/material";
 import {
   ArrowBack as ArrowBackIcon,
   ShoppingCart as CartIcon,
   NavigateBefore as NavigateBeforeIcon,
   NavigateNext as NavigateNextIcon,
   LocationOn as LocationIcon,
-} from '@mui/icons-material';
-import { useSelector } from 'react-redux';
-import { selectAuthToken } from '../store/slices/authSlice';
-import logger from '../utils/logger';
-import LowStockIndicator from '../components/LowStockIndicator';
+} from "@mui/icons-material";
+import { useSelector, useDispatch } from "react-redux";
+import { selectAuthToken } from "../store/slices/authSlice";
+import { setCartItems, selectCartItems } from "../store/slices/cartSlice";
+import logger from "../utils/logger";
+import LowStockIndicator from "../components/LowStockIndicator";
 
 const ProductDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const token = useSelector(selectAuthToken);
+  const cartItems = useSelector(selectCartItems);
+  const dispatch = useDispatch();
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -47,28 +56,31 @@ const ProductDetailsPage = () => {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(`http://localhost:3000/api/products/${id}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
+        const response = await fetch(
+          `http://localhost:3000/api/products/${id}`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
-          throw new Error('Failed to fetch product details');
+          throw new Error("Failed to fetch product details");
         }
 
         const result = await response.json();
-        
+
         if (result.code === 200) {
           setProduct(result.data);
-          logger.info('Product details fetched successfully');
+          logger.info("Product details fetched successfully");
         } else {
-          throw new Error(result.message || 'Failed to fetch product details');
+          throw new Error(result.message || "Failed to fetch product details");
         }
       } catch (err) {
         setError(err.message);
-        logger.error('Error fetching product details', { error: err.message });
+        logger.error("Error fetching product details", { error: err.message });
       } finally {
         setLoading(false);
       }
@@ -79,9 +91,9 @@ const ProductDetailsPage = () => {
 
   const handleImageNavigation = (direction) => {
     if (!product?.images?.length) return;
-    
-    setCurrentImageIndex(prev => {
-      if (direction === 'next') {
+
+    setCurrentImageIndex((prev) => {
+      if (direction === "next") {
         return prev >= product.images.length - 1 ? 0 : prev + 1;
       } else {
         return prev <= 0 ? product.images.length - 1 : prev - 1;
@@ -89,9 +101,63 @@ const ProductDetailsPage = () => {
     });
   };
 
+  // Check if product is already in cart
+  const isProductInCart = () => {
+    return cartItems?.items?.some(
+      (item) => item.productId._id === id || item.productId === id
+    );
+  };
+
+  // Handle add to cart functionality
+  const handleAddToCart = async () => {
+    try {
+      const response = await fetch("http://localhost:3000/api/cart", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          productId: id,
+          quantity: 1,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.code === 200) {
+        dispatch(setCartItems(result.data));
+        setSnackbar({
+          open: true,
+          message: "Item added to cart successfully",
+          severity: "success",
+        });
+      } else {
+        throw new Error(result.message || "Failed to add item to cart");
+      }
+    } catch (err) {
+      setSnackbar({
+        open: true,
+        message: err.message,
+        severity: "error",
+      });
+      logger.error("Error adding item to cart", { error: err.message });
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbar({ ...snackbar, open: false });
+  };
+
   if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+      <Box
+        sx={{
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          minHeight: "60vh",
+        }}>
         <CircularProgress />
       </Box>
     );
@@ -101,12 +167,11 @@ const ProductDetailsPage = () => {
     return (
       <Container maxWidth="lg" sx={{ py: 4 }}>
         <Alert severity="error" sx={{ mb: 2 }}>
-          {error || 'Product not found'}
+          {error || "Product not found"}
         </Alert>
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/products')}
-        >
+          onClick={() => navigate("/products")}>
           Back to Products
         </Button>
       </Container>
@@ -114,53 +179,50 @@ const ProductDetailsPage = () => {
   }
 
   return (
-    <Box sx={{ bgcolor: 'background.default', minHeight: '100vh', py: 4 }}>
+    <Box sx={{ bgcolor: "background.default", minHeight: "100vh", py: 4 }}>
       <Container maxWidth="lg">
         <Button
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/products')}
-          sx={{ mb: 3 }}
-        >
+          onClick={() => navigate("/products")}
+          sx={{ mb: 3 }}>
           Back to Products
         </Button>
 
         <Grid container spacing={4}>
           {/* Left side - Images and Video */}
           <Grid item xs={12} md={6}>
-            <Card sx={{ mb: 2, position: 'relative' }}>
+            <Card sx={{ mb: 2, position: "relative" }}>
               <CardMedia
                 component="img"
                 height={400}
                 image={product.images[currentImageIndex]}
                 alt={product.name}
-                sx={{ objectFit: 'contain', bgcolor: 'grey.50' }}
+                sx={{ objectFit: "contain", bgcolor: "grey.50" }}
               />
               {product.images.length > 1 && (
                 <>
                   <IconButton
                     sx={{
-                      position: 'absolute',
+                      position: "absolute",
                       left: 8,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      bgcolor: 'rgba(255, 255, 255, 0.8)',
-                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' },
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      bgcolor: "rgba(255, 255, 255, 0.8)",
+                      "&:hover": { bgcolor: "rgba(255, 255, 255, 0.9)" },
                     }}
-                    onClick={() => handleImageNavigation('prev')}
-                  >
+                    onClick={() => handleImageNavigation("prev")}>
                     <NavigateBeforeIcon />
                   </IconButton>
                   <IconButton
                     sx={{
-                      position: 'absolute',
+                      position: "absolute",
                       right: 8,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      bgcolor: 'rgba(255, 255, 255, 0.8)',
-                      '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.9)' },
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      bgcolor: "rgba(255, 255, 255, 0.8)",
+                      "&:hover": { bgcolor: "rgba(255, 255, 255, 0.9)" },
                     }}
-                    onClick={() => handleImageNavigation('next')}
-                  >
+                    onClick={() => handleImageNavigation("next")}>
                     <NavigateNextIcon />
                   </IconButton>
                 </>
@@ -168,7 +230,8 @@ const ProductDetailsPage = () => {
             </Card>
 
             {/* Thumbnail Images */}
-            <Box sx={{ display: 'flex', gap: 1, mb: 2, overflowX: 'auto', pb: 1 }}>
+            <Box
+              sx={{ display: "flex", gap: 1, mb: 2, overflowX: "auto", pb: 1 }}>
               {product.images.map((image, index) => (
                 <Box
                   key={index}
@@ -176,18 +239,20 @@ const ProductDetailsPage = () => {
                     width: 80,
                     height: 80,
                     flexShrink: 0,
-                    border: index === currentImageIndex ? `2px solid ${theme.palette.primary.main}` : '2px solid transparent',
-                    cursor: 'pointer',
-                    '&:hover': { opacity: 0.8 },
-                  }}
-                >
+                    border:
+                      index === currentImageIndex
+                        ? `2px solid ${theme.palette.primary.main}`
+                        : "2px solid transparent",
+                    cursor: "pointer",
+                    "&:hover": { opacity: 0.8 },
+                  }}>
                   <img
                     src={image}
                     alt={`${product.name} thumbnail ${index + 1}`}
                     style={{
-                      width: '100%',
-                      height: '100%',
-                      objectFit: 'contain',
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
                       backgroundColor: theme.palette.grey[50],
                     }}
                     onClick={() => setCurrentImageIndex(index)}
@@ -202,18 +267,17 @@ const ProductDetailsPage = () => {
                 <Typography variant="h6" gutterBottom>
                   Product Video
                 </Typography>
-                <Box sx={{ position: 'relative', paddingTop: '56.25%' }}>
+                <Box sx={{ position: "relative", paddingTop: "56.25%" }}>
                   <video
                     controls
                     style={{
-                      position: 'absolute',
+                      position: "absolute",
                       top: 0,
                       left: 0,
-                      width: '100%',
-                      height: '100%',
+                      width: "100%",
+                      height: "100%",
                       backgroundColor: theme.palette.grey[100],
-                    }}
-                  >
+                    }}>
                     <source src={product.video} type="video/mp4" />
                     Your browser does not support the video tag.
                   </video>
@@ -224,19 +288,19 @@ const ProductDetailsPage = () => {
 
           {/* Right side - Product Details */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, position: 'relative' }}>
+            <Paper sx={{ p: 3, position: "relative" }}>
               {/* Add LowStockIndicator badge */}
-              <LowStockIndicator 
-                stockQuantity={product.stockQuantity} 
-                unit={product.unit} 
+              <LowStockIndicator
+                stockQuantity={product.stockQuantity}
+                unit={product.unit}
                 variant="badge"
                 sx={{
                   top: 16,
                   right: 16,
-                  '& .MuiChip-label': {
+                  "& .MuiChip-label": {
                     px: 2,
                     py: 0.5,
-                    fontSize: '0.9rem',
+                    fontSize: "0.9rem",
                   },
                 }}
               />
@@ -257,8 +321,10 @@ const ProductDetailsPage = () => {
                   sx={{ mr: 1 }}
                 />
                 <Chip
-                  label={product.stockQuantity > 0 ? 'In Stock' : 'Out of Stock'}
-                  color={product.stockQuantity > 0 ? 'success' : 'error'}
+                  label={
+                    product.stockQuantity > 0 ? "In Stock" : "Out of Stock"
+                  }
+                  color={product.stockQuantity > 0 ? "success" : "error"}
                   variant="outlined"
                 />
               </Box>
@@ -279,26 +345,25 @@ const ProductDetailsPage = () => {
                     <Typography variant="body2" color="text.secondary">
                       SKU
                     </Typography>
-                    <Typography variant="body1">
-                      {product.sku}
-                    </Typography>
+                    <Typography variant="body1">{product.sku}</Typography>
                   </Grid>
                   <Grid item xs={6}>
                     <Typography variant="body2" color="text.secondary">
                       Stock
                     </Typography>
                     {/* Add LowStockIndicator text variant */}
-                    <LowStockIndicator 
-                      stockQuantity={product.stockQuantity} 
-                      unit={product.unit} 
+                    <LowStockIndicator
+                      stockQuantity={product.stockQuantity}
+                      unit={product.unit}
                       variant="text"
-                      sx={{ 
-                        fontSize: '1rem',
-                        mt: 0.5
+                      sx={{
+                        fontSize: "1rem",
+                        mt: 0.5,
                       }}
                     />
                     {/* Show regular stock text if not low on stock */}
-                    {(product.stockQuantity >= 5 || product.stockQuantity === 0) && (
+                    {(product.stockQuantity >= 5 ||
+                      product.stockQuantity === 0) && (
                       <Typography variant="body1">
                         {product.stockQuantity} {product.unit}
                       </Typography>
@@ -320,9 +385,7 @@ const ProductDetailsPage = () => {
                           <Typography variant="body2" color="text.secondary">
                             {spec.key}
                           </Typography>
-                          <Typography variant="body1">
-                            {spec.value}
-                          </Typography>
+                          <Typography variant="body1">{spec.value}</Typography>
                         </Paper>
                       </Grid>
                     ))}
@@ -337,15 +400,18 @@ const ProductDetailsPage = () => {
                     Warehouse Information
                   </Typography>
                   <Paper variant="outlined" sx={{ p: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                    <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
                       <LocationIcon color="primary" sx={{ mr: 1 }} />
                       <Typography variant="body1">
                         {product.warehouse.warehouseCode}
                       </Typography>
                     </Box>
                     <Typography variant="body2" color="text.secondary">
-                      {product.warehouse.address.street}<br />
-                      {product.warehouse.address.province}, {product.warehouse.address.country}<br />
+                      {product.warehouse.address.street}
+                      <br />
+                      {product.warehouse.address.province},{" "}
+                      {product.warehouse.address.country}
+                      <br />
                       {product.warehouse.address.zipCode}
                     </Typography>
                   </Paper>
@@ -359,16 +425,48 @@ const ProductDetailsPage = () => {
                 fullWidth
                 startIcon={<CartIcon />}
                 disabled={product.stockQuantity === 0}
-                sx={{ mt: 2 }}
-              >
-                {product.stockQuantity === 0 ? 'Out of Stock' : 'Add to Cart'}
+                onClick={handleAddToCart}
+                sx={{
+                  mt: 2,
+                  bgcolor: isProductInCart() ? "transparent" : "primary.main",
+                  color: isProductInCart() ? "primary.main" : "white",
+                  borderColor: "primary.main",
+                  border: isProductInCart() ? "1px solid" : "none",
+                  "&:hover": {
+                    bgcolor: isProductInCart()
+                      ? "primary.lighter"
+                      : "primary.dark",
+                  },
+                  transition: "all 0.3s ease",
+                }}>
+                {product.stockQuantity === 0
+                  ? "Out of Stock"
+                  : isProductInCart()
+                  ? "In Cart"
+                  : "Add to Cart"}
               </Button>
             </Paper>
           </Grid>
         </Grid>
       </Container>
+
+      {/* Feedback Snackbar */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        message={snackbar.message}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}>
+        <Alert
+          onClose={handleCloseSnackbar}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ width: "100%" }}>
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 };
 
-export default ProductDetailsPage; 
+export default ProductDetailsPage;

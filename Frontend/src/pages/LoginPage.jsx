@@ -19,7 +19,7 @@ import {
 } from "../store/slices/authSlice";
 import logger from "../utils/logger";
 import { Link as RouterLink, useNavigate } from "react-router-dom";
-import { api } from '../utils/api';
+import { api } from "../utils/api";
 
 const LoginPage = () => {
   const dispatch = useDispatch();
@@ -45,8 +45,8 @@ const LoginPage = () => {
     dispatch(loginStart());
 
     try {
-      const response = await api.fetch('/auth/login', {
-        method: 'POST',
+      const response = await api.fetch("/auth/login", {
+        method: "POST",
         body: JSON.stringify(formData),
       });
 
@@ -54,7 +54,7 @@ const LoginPage = () => {
       console.log(result);
       if (result.code === 200) {
         dispatch(loginSuccess(result.data));
-        
+
         setToastMessage(result.message || `Welcome back, ${result.data.name}!`);
         setToastSeverity("success");
         setShowToast(true);
@@ -62,11 +62,24 @@ const LoginPage = () => {
         logger.info("Login successful", {
           userId: result.data._id,
           email: result.data.email,
-          role: result.data.role_id?.name || 'customer',
+          role: result.data.role_id?.name || "customer",
           permissionsCount: result.data.permissions?.length || 0,
         });
 
-        navigate("/dashboard");
+        // Redirect based on user role
+        const userRole = result.data.role_id?.name?.toLowerCase() || "customer";
+        if (userRole === "super admin") {
+          navigate("/users");
+        } else if (userRole === "customer") {
+          navigate("/products");
+        } else if (userRole === "warehouse worker") {
+          navigate("/dashboard");
+        } else if (userRole === "driver") {
+          navigate("/dashboard");
+        } else {
+          // Default fallback
+          navigate("/dashboard");
+        }
       } else {
         throw new Error(result.message || "Login failed");
       }

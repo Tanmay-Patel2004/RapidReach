@@ -250,13 +250,32 @@ function App() {
                 </ProtectedRoute>
               }
             />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<RoleBasedRedirect />} />
+            <Route path="*" element={<RoleBasedRedirect />} />
           </Routes>
         </Box>
       </Box>
     </AuthProvider>
   );
 }
+
+// Component for role-based redirection
+const RoleBasedRedirect = () => {
+  const userRole = useSelector(selectUserRole);
+  const roleName = userRole?.name?.toLowerCase() || "";
+
+  if (roleName === "super admin") {
+    return <Navigate to="/users" replace />;
+  } else if (roleName === "customer") {
+    return <Navigate to="/products" replace />;
+  } else if (roleName === "warehouse worker") {
+    return <Navigate to="/dashboard" replace />;
+  } else if (roleName === "driver") {
+    return <Navigate to="/dashboard" replace />;
+  } else {
+    // Default fallback
+    return <Navigate to="/dashboard" replace />;
+  }
+};
 
 export default App;

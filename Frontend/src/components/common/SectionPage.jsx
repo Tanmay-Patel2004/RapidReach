@@ -67,6 +67,7 @@ const SectionPage = () => {
     severity: "success",
   });
   const [roles, setRoles] = useState([]);
+  const [permissions, setPermissions] = useState([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -397,6 +398,23 @@ const SectionPage = () => {
     }
   };
 
+  // Add this new function to fetch permissions
+  const fetchPermissions = async () => {
+    try {
+      const response = await axiosInstance.get("/permissions");
+      if (response.data.code === 200) {
+        setPermissions(response.data.data || []);
+      }
+    } catch (error) {
+      logger.error("Error fetching permissions:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to fetch permissions",
+        severity: "error",
+      });
+    }
+  };
+
   // Move fetchData outside useEffect and make it available throughout the component
   const fetchData = async () => {
     setLoading(true);
@@ -710,11 +728,23 @@ const SectionPage = () => {
         ? new Date(item.dateOfBirth).toISOString().split("T")[0]
         : "";
 
+      // Special handling for permission relations
+      let editData = { ...item };
+
+      // Check if we're editing a permission relation
+      if (location.pathname === "/permission-relations") {
+        console.log("Editing permission relation:", item);
+        // Make sure roleId and permissionId are properly extracted from their objects
+        editData.roleId = item.roleId?._id || item.roleId || "";
+        editData.permissionId =
+          item.permissionId?._id || item.permissionId || "";
+      }
+
       // Properly structure the form data for editing
       const editFormData = {
-        ...item,
+        ...editData,
         dateOfBirth: formattedDate,
-        role_id: item.role_id || "",
+        role_id: item.role_id?._id || item.role_id || "",
         address: {
           street: item.address?.street || "",
           unitNumber: item.address?.unitNumber || "",
@@ -730,9 +760,17 @@ const SectionPage = () => {
 
     setOpenDialog(true);
 
-    // Fetch roles when opening the users form
-    if (location.pathname === "/users") {
+    // Fetch roles when opening the users form or permission relations form
+    if (
+      location.pathname === "/users" ||
+      location.pathname === "/permission-relations"
+    ) {
       fetchRoles();
+    }
+
+    // Fetch permissions when opening the permission relations form
+    if (location.pathname === "/permission-relations") {
+      fetchPermissions();
     }
   };
 
@@ -760,12 +798,17 @@ const SectionPage = () => {
       // Add any special handling for specific endpoints here
       if (location.pathname === "/users") {
         // Handle user-specific data transformation
-        if (
-          dialogMode === "add" &&
-          dataToSubmit.password !== dataToSubmit.confirmPassword
-        ) {
-          setSubmitError("Passwords do not match");
-          return;
+        if (dialogMode === "add") {
+          // Validate required fields for user creation
+          if (!dataToSubmit.password) {
+            setSubmitError("Password is required");
+            return;
+          }
+
+          if (dataToSubmit.password !== dataToSubmit.confirmPassword) {
+            setSubmitError("Passwords do not match");
+            return;
+          }
         }
 
         // Don't send confirmPassword to API
@@ -776,6 +819,35 @@ const SectionPage = () => {
           ...dataToSubmit,
           isEmailVerified: false,
         };
+      }
+
+      // Special handling for permission relations
+      if (location.pathname === "/permission-relations") {
+        // Check if both roleId and permissionId are selected
+        if (!dataToSubmit.roleId || !dataToSubmit.permissionId) {
+          setSubmitError("Both Role and Permission must be selected");
+          return;
+        }
+
+        // Remove unnecessary fields that might cause server-side issues
+        if (
+          dataToSubmit.roleId &&
+          typeof dataToSubmit.roleId === "object" &&
+          dataToSubmit.roleId._id
+        ) {
+          dataToSubmit.roleId = dataToSubmit.roleId._id;
+        }
+
+        if (
+          dataToSubmit.permissionId &&
+          typeof dataToSubmit.permissionId === "object" &&
+          dataToSubmit.permissionId._id
+        ) {
+          dataToSubmit.permissionId = dataToSubmit.permissionId._id;
+        }
+
+        // Log the permission relation data being submitted
+        logger.info("Preparing permission relation data:", dataToSubmit);
       }
 
       // Special handling for warehouse data
@@ -811,14 +883,40 @@ const SectionPage = () => {
       }
 
       if (dialogMode === "add") {
-        response = await axiosInstance.post(endpoint.url, dataToSubmit);
-        console.log("Add response:", response.data); // Debug log
+        console.log("Submitting data to create new item:", dataToSubmit);
+        try {
+          response = await axiosInstance.post(endpoint.url, dataToSubmit);
+          console.log("Add response:", response.data); // Debug log
+        } catch (error) {
+          console.error("Error in API call:", error);
+          if (error.response) {
+            console.error("Error response:", error.response.data);
+          }
+          throw error;
+        }
       } else {
-        response = await axiosInstance.put(
-          `${endpoint.url}/${selectedItem.id}`,
-          dataToSubmit
-        );
-        console.log("Update response:", response.data); // Debug log
+        try {
+          let endpoint = apiEndpoints[location.pathname];
+          let updateUrl = `${endpoint.url}/${selectedItem.id}`;
+
+          // Special handling for permission relations
+          if (location.pathname === "/permission-relations") {
+            console.log(
+              "Updating permission relation with ID:",
+              selectedItem.id
+            );
+            console.log("Data to submit:", dataToSubmit);
+          }
+
+          response = await axiosInstance.put(updateUrl, dataToSubmit);
+          console.log("Update response:", response.data); // Debug log
+        } catch (error) {
+          console.error("Error in API call:", error);
+          if (error.response) {
+            console.error("Error response:", error.response.data);
+          }
+          throw error;
+        }
       }
 
       // Check the response status
@@ -870,7 +968,14 @@ const SectionPage = () => {
   const handleDelete = async (id) => {
     try {
       const endpoint = apiEndpoints[location.pathname];
+
+      // Add logging for role-permission relations
+      if (location.pathname === "/permission-relations") {
+        console.log("Deleting permission relation with ID:", id);
+      }
+
       const response = await axiosInstance.delete(`${endpoint.url}/${id}`);
+      console.log("Delete response:", response.data); // Debug log
 
       if (response.data.code === 200) {
         setSnackbar({
@@ -882,6 +987,11 @@ const SectionPage = () => {
         fetchData();
       }
     } catch (error) {
+      console.error("Delete error:", error);
+      if (error.response) {
+        console.error("Error response:", error.response.data);
+      }
+
       setSnackbar({
         open: true,
         message: error.response?.data?.message || "An error occurred",
@@ -935,6 +1045,13 @@ const SectionPage = () => {
           {
             name: "password",
             label: "Password",
+            type: "password",
+            required: dialogMode === "add", // Only required for new users
+            minLength: 6,
+          },
+          {
+            name: "confirmPassword",
+            label: "Confirm Password",
             type: "password",
             required: dialogMode === "add", // Only required for new users
             minLength: 6,
@@ -1056,6 +1173,31 @@ const SectionPage = () => {
             options: ["true", "false"],
             valueGetter: (value) => value === "true",
             helperText: "Whether this permission is active",
+          },
+        ];
+      case "/permission-relations":
+        return [
+          {
+            name: "roleId",
+            label: "Role",
+            type: "select",
+            required: true,
+            options: roles.map((role) => ({
+              value: role._id,
+              label: role.name,
+            })),
+            helperText: "Select the role to assign permissions to",
+          },
+          {
+            name: "permissionId",
+            label: "Permission",
+            type: "select",
+            required: true,
+            options: permissions.map((permission) => ({
+              value: permission._id,
+              label: `${permission.name} (${permission.title})`,
+            })),
+            helperText: "Select the permission to assign to the role",
           },
         ];
       case "/warehouse":
@@ -1416,6 +1558,11 @@ const SectionPage = () => {
         </DialogTitle>
         <DialogContent sx={{ pb: 0 }}>
           <Box sx={{ pt: 2 }}>
+            {submitError && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                {submitError}
+              </Alert>
+            )}
             {getFormFields().map((field) => (
               <TextField
                 key={field.name}
@@ -1447,7 +1594,9 @@ const SectionPage = () => {
                   },
                 }}>
                 {field.type === "select" &&
-                  (field.name === "role_id"
+                  (field.name === "role_id" ||
+                  field.name === "roleId" ||
+                  field.name === "permissionId"
                     ? field.options.map((option) => (
                         <MenuItem key={option.value} value={option.value}>
                           {option.label}

@@ -78,6 +78,11 @@ const Navbar = () => {
           { title: "Users", path: "/users", icon: <People /> },
           { title: "Roles", path: "/roles", icon: <AdminPanelSettings /> },
           { title: "Permissions", path: "/permissions", icon: <Security /> },
+          {
+            title: "Permission Relations",
+            path: "/permission-relations",
+            icon: <Security />,
+          },
           { title: "Warehouse", path: "/warehouse", icon: <Warehouse /> },
           { title: "Orders", path: "/orders", icon: <OrderIcon /> },
           { title: "Reports", path: "/reports", icon: <AssessmentIcon /> },

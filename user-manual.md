@@ -26,11 +26,11 @@
    - [Viewing Available Orders](#viewing-available-orders)
    - [Claiming Orders](#claiming-orders)
    - [Updating Delivery Status](#updating-delivery-status)
-   - [Navigation & Route Planning](#navigation--route-planning)
+   - [Navigation &amp; Route Planning](#navigation--route-planning)
 8. [Administrator Guide](#administrator-guide)
    - [User Management](#user-management)
    - [System Configuration](#system-configuration)
-   - [Reports & Analytics](#reports--analytics)
+   - [Reports &amp; Analytics](#reports--analytics)
 9. [Troubleshooting](#troubleshooting)
    - [Common Issues](#common-issues)
    - [Error Messages](#error-messages)
@@ -72,8 +72,6 @@ RapidReach is a web-based application that doesn't require installation. However
 2. Tap the menu button (three dots)
 3. Select "Add to Home Screen"
 
-![Add to Home Screen](placeholder-for-add-to-homescreen.png)
-
 ### Logging In
 
 To access RapidReach:
@@ -89,7 +87,7 @@ If you've forgotten your password:
 2. Enter your email address
 3. Follow the instructions sent to your email to reset your password
 
-![Login Screen](placeholder-for-login-screen.png)
+![1743713708748](image/user-manual/1743713708748.png)
 
 ## User Roles
 
@@ -123,20 +121,6 @@ RapidReach has four primary user roles, each with specific functionalities:
 - View comprehensive reports
 - Manage warehouse and driver assignments
 
-## Dashboard Overview
-
-After logging in, you will see your personalized dashboard that displays relevant information based on your user role.
-
-![Dashboard Overview](placeholder-for-dashboard.png)
-
-The dashboard includes:
-
-- Navigation menu (left sidebar)
-- Quick actions panel
-- Recent activity feed
-- Status indicators
-- Notifications centre
-
 ## Customer Guide
 
 ### Browsing Products
@@ -149,7 +133,7 @@ To browse products:
 4. Sort products by price, popularity, or newest additions
 5. Click on a product to view detailed information
 
-![Product Browsing](placeholder-for-product-browsing.png)
+![1743714077495](image/user-manual/1743714077495.png)
 
 ### Placing Orders
 
@@ -160,12 +144,9 @@ To place an order:
 3. Continue shopping or click on the cart icon to proceed to checkout
 4. Review your order items
 5. Select or add a delivery address
-6. Choose a payment method
-7. Click "Place Order" to complete your purchase
+6. Click "Place Order" to complete your purchase
 
-You will receive an order confirmation email with your order details.
-
-![Checkout Process](placeholder-for-checkout.png)
+![1743714238153](image/user-manual/1743714238153.png)
 
 ### Tracking Deliveries
 
@@ -184,7 +165,7 @@ Order statuses include:
 - Delivered: Order has been successfully delivered
 - Not Delivered: Delivery was attempted but unsuccessful
 
-![Order Tracking](placeholder-for-order-tracking.png)
+![1743714267917](image/user-manual/1743714267917.png)
 
 ### Managing Profile
 
@@ -199,7 +180,7 @@ To update your profile information:
    - Saved addresses
 4. Click "Save Changes" when finished
 
-![Profile Management](placeholder-for-profile-management.png)
+![1743714375975](image/user-manual/1743714375975.png)
 
 ## Warehouse Worker Guide
 
@@ -226,7 +207,7 @@ As a warehouse worker, you can manage products through the Product Management in
 
 **Note:** When adding product specifications, provide clear and concise information that helps customers understand the product features.
 
-![Product Management](placeholder-for-product-management.png)
+![1743714415877](image/user-manual/1743714415877.png)
 
 ### Order Processing
 
@@ -236,26 +217,12 @@ To process customer orders:
 2. View pending orders in the "Pending" tab
 3. Select an order to view details
 4. Verify the items in the order
-5. Click "Mark as Prepared" when the order is ready for pickup
+5. Click "Mark Prepared" when the order is ready for pickup
 6. The order will move to the "Ready for Pickup" tab
 
 **Tip:** Process orders in the sequence they were received to ensure fair delivery times.
 
-![Order Processing](placeholder-for-order-processing.png)
-
-### Inventory Management
-
-To manage inventory:
-
-1. Navigate to "Inventory" in the sidebar
-2. View current stock levels for all products
-3. Update stock quantities as needed
-4. Set alerts for low stock items
-5. Generate inventory reports
-
-**Note:** Regularly update inventory counts to ensure accurate product availability information for customers.
-
-![Inventory Management](placeholder-for-inventory.png)
+![1743714431666](image/user-manual/1743714431666.png)
 
 ## Driver Guide
 
@@ -271,7 +238,7 @@ As a driver, you can view orders that are ready for delivery:
    - Items in the order
    - Customer contact information
 
-![Available Orders](placeholder-for-available-orders.png)
+![1743714522239](image/user-manual/1743714522239.png)
 
 ### Claiming Orders
 
@@ -284,7 +251,7 @@ To claim an order for delivery:
 
 **Note:** Once you claim an order, you are responsible for its delivery. Only claim orders that you can deliver in a timely manner.
 
-![Claiming Orders](placeholder-for-claim-order.png)
+![1743714613498](image/user-manual/1743714613498.png)
 
 ### Updating Delivery Status
 
@@ -302,21 +269,7 @@ To update the status of an order during delivery:
 
 **Important:** For "Not Delivered" status, always provide a detailed reason to help customer service follow up.
 
-![Updating Delivery Status](placeholder-for-update-status.png)
-
-### Navigation & Route Planning
-
-To optimize your delivery route:
-
-1. Navigate to "Route Planning" in the sidebar
-2. View all your claimed orders on an interactive map
-3. The system will suggest an optimal route
-4. Click "Start Navigation" to begin guided navigation to each location
-5. Mark each delivery as complete as you proceed
-
-**Tip:** Use the batch delivery feature to group deliveries in the same area for more efficient routes.
-
-![Route Planning](placeholder-for-route-planning.png)
+![1743714665639](image/user-manual/1743714665639.png)
 
 ## Administrator Guide
 
@@ -331,36 +284,18 @@ As an administrator, you can manage user accounts:
 5. Assign or change user roles
 6. Disable or enable user accounts
 
-![User Management](placeholder-for-user-management.png)
-
-### System Configuration
-
-To configure system settings:
-
-1. Navigate to "Settings" in the sidebar
-2. Configure various system parameters, including:
-   - Notification settings
-   - Default values
-   - Integration settings
-   - Business hours
-   - Service areas
-
-![System Configuration](placeholder-for-system-settings.png)
+![1743714770465](image/user-manual/1743714770465.png)
 
 ### Reports & Analytics
 
 To access reports and analytics:
 
 1. Navigate to "Reports" in the sidebar
-2. Select from available report types:
-   - Sales reports
-   - Delivery performance
-   - User activity
-   - Inventory status
+2. Select available Monthly report :
 3. Set date ranges and filters as needed
-4. View reports as charts or export as CSV/PDF
+4. View reports as charts or export as PDF
 
-![Reports & Analytics](placeholder-for-reports.png)
+![1743714806774](image/user-manual/1743714806774.png)
 
 ## Troubleshooting
 
@@ -370,7 +305,6 @@ To access reports and analytics:
 
 - **Issue**: Cannot log in despite correct credentials
 - **Solution**: Clear browser cookies and cache, then try again
-- **Alternative**: Use the "Forgot Password" option to reset your password
 
 #### Slow Application Performance
 
@@ -394,26 +328,7 @@ To access reports and analytics:
 | E1004      | File too large    | Reduce file size and try again               |
 | E1005      | Invalid format    | Ensure the file is in a supported format     |
 
-### Contact Support
-
-If you encounter issues that cannot be resolved using this manual:
-
-1. Navigate to "Help" in the footer menu
-2. Click "Contact Support"
-3. Fill out the support request form with:
-   - Detailed description of the issue
-   - Steps to reproduce the problem
-   - Screenshots if applicable
-4. Click "Submit" to send your request
-
-Support hours: Monday-Friday, 9:00 AM - 5:00 PM EST
-
-Emergency support: +1-800-RAPID-HELP
-
 ## FAQ
-
-**Q: How do I reset my password?**
-A: Click on "Forgot Password?" on the login screen and follow the instructions sent to your email.
 
 **Q: Can I change my user role?**
 A: No, user roles can only be changed by system administrators. Contact your administrator if you need a role change.
@@ -426,9 +341,6 @@ A: Contact your supervisor immediately. They can reassign the order to another d
 
 **Q: Why can't I see certain products as a customer?**
 A: Products might be out of stock, discontinued, or not available in your region.
-
-**Q: How can warehouse workers know which orders to prepare first?**
-A: Orders are automatically prioritized by order date, with the oldest orders at the top of the list.
 
 **Q: Can I use RapidReach on my mobile device?**
 A: Yes, RapidReach is fully responsive and works on smartphones and tablets. For the best experience, add it to your home screen.

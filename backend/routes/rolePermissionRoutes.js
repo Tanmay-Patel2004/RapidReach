@@ -5,7 +5,9 @@ const {
   getAllRolePermissions,
   getPermissionsByRoleId,
   getRolesByPermissionId,
-  removePermissionFromRole
+  removePermissionFromRole,
+  updateRolePermission,
+  deleteRolePermissionById
 } = require('../controllers/rolePermissionController');
 const { protect } = require('../middleware/authMiddleware');
 const { checkPermission } = require('../middleware/permissionMiddleware');
@@ -32,6 +34,11 @@ router.route('/')
   .post(checkPermission(PERMISSION_IDS.ASSIGN_PERMISSION_TO_ROLE), assignPermissionToRole)
   .get(checkPermission(PERMISSION_IDS.READ_ALL_ROLE_PERMISSIONS), getAllRolePermissions)
   .delete(checkPermission(PERMISSION_IDS.REMOVE_PERMISSION_FROM_ROLE), removePermissionFromRole);
+
+// Add route for updating role-permission relationship
+router.route('/:id')
+  .put(checkPermission(PERMISSION_IDS.ASSIGN_PERMISSION_TO_ROLE), updateRolePermission)
+  .delete(checkPermission(PERMISSION_IDS.REMOVE_PERMISSION_FROM_ROLE), deleteRolePermissionById);
 
 router.route('/role/:roleId')
   .get(checkPermission(PERMISSION_IDS.READ_ALL_ROLE_PERMISSIONS), getPermissionsByRoleId);
