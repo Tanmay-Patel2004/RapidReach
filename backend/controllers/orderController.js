@@ -130,6 +130,36 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+// @desc    Get orders for logged-in customer
+// @route   GET /api/orders/customer
+// @access  Private
+const getCustomerOrders = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find orders where the user field matches the logged-in user's ID
+    const orders = await Order.find({ user: userId }).sort({ createdAt: -1 });
+
+    const { code, message, data } = getHandlerResponse(
+      true,
+      httpStatus.OK,
+      'Customer orders retrieved successfully',
+      orders
+    );
+
+    return res.status(code).json({ code, message, data });
+  } catch (error) {
+    console.error('❌ Get Customer Orders Error:', error);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message,
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  }
+};
+
 // @desc    Get monthly order report
 // @route   GET /api/orders/report
 // @access  Private
@@ -256,6 +286,7 @@ module.exports = {
   checkout,
   updateOrderStatus,
   getAllOrders,
+  getCustomerOrders,
   getMonthlyReport,
   setOrderReadyForPickup,
 };

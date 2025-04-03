@@ -723,13 +723,23 @@ const SectionPage = () => {
     setSelectedItem(item);
 
     if (mode === "edit" && item) {
-      // Format the date to YYYY-MM-DD for the date input
-      const formattedDate = item.dateOfBirth
-        ? new Date(item.dateOfBirth).toISOString().split("T")[0]
-        : "";
-
-      // Special handling for permission relations
+      // Make a copy of the item to avoid directly modifying it
       let editData = { ...item };
+
+      // If dateOfBirth exists, convert it to YYYY-MM-DD format for the date input
+      let formattedDate = "";
+      if (editData.dateOfBirth) {
+        const date = new Date(editData.dateOfBirth);
+        if (!isNaN(date.getTime())) {
+          formattedDate = date.toISOString().split("T")[0];
+        }
+      }
+
+      // If isEmailVerified exists, convert boolean to string for select input
+      if (editData.isEmailVerified !== undefined) {
+        // Convert to string "true" or "false" for the select field
+        editData.isEmailVerified = editData.isEmailVerified ? "true" : "false";
+      }
 
       // Check if we're editing a permission relation
       if (location.pathname === "/permission-relations") {
@@ -809,16 +819,40 @@ const SectionPage = () => {
             setSubmitError("Passwords do not match");
             return;
           }
+
+          // Remove isEmailVerified from new user creation - will use server default
+          delete dataToSubmit.isEmailVerified;
+        } else if (dialogMode === "edit") {
+          // Ensure isEmailVerified is properly formatted as boolean for user updates
+          if (dataToSubmit.isEmailVerified !== undefined) {
+            dataToSubmit.isEmailVerified = Boolean(
+              dataToSubmit.isEmailVerified
+            );
+          }
         }
 
         // Don't send confirmPassword to API
         delete dataToSubmit.confirmPassword;
 
-        // Set default values for new users
-        dataToSubmit = {
-          ...dataToSubmit,
-          isEmailVerified: false,
-        };
+        // Handle address fields for users
+        const addressFields = {};
+
+        // Extract address fields from dataToSubmit and structure them properly
+        for (const key in dataToSubmit) {
+          if (key.startsWith("address.")) {
+            const addressField = key.split(".")[1];
+            addressFields[addressField] = dataToSubmit[key];
+            // Remove the flat address.field property
+            delete dataToSubmit[key];
+          }
+        }
+
+        // Only set address if we have address fields
+        if (Object.keys(addressFields).length > 0) {
+          dataToSubmit.address = addressFields;
+        }
+
+        logger.info("Structured user data with address:", dataToSubmit);
       }
 
       // Special handling for permission relations
@@ -882,83 +916,66 @@ const SectionPage = () => {
         logger.info("Restructured warehouse data:", dataToSubmit);
       }
 
-      if (dialogMode === "add") {
-        console.log("Submitting data to create new item:", dataToSubmit);
-        try {
-          response = await axiosInstance.post(endpoint.url, dataToSubmit);
-          console.log("Add response:", response.data); // Debug log
-        } catch (error) {
-          console.error("Error in API call:", error);
-          if (error.response) {
-            console.error("Error response:", error.response.data);
-          }
-          throw error;
-        }
-      } else {
-        try {
-          let endpoint = apiEndpoints[location.pathname];
-          let updateUrl = `${endpoint.url}/${selectedItem.id}`;
+      try {
+        // For update operations
+        if (dialogMode === "edit") {
+          // Log the update data for debugging
+          logger.info(
+            `Updating ${location.pathname.slice(1)} with data:`,
+            dataToSubmit
+          );
 
-          // Special handling for permission relations
+          // Special handling for permission relations update
+          let updateUrl = `${endpoint.url}/${selectedItem.id}`;
           if (location.pathname === "/permission-relations") {
-            console.log(
+            logger.info(
               "Updating permission relation with ID:",
               selectedItem.id
             );
-            console.log("Data to submit:", dataToSubmit);
           }
 
           response = await axiosInstance.put(updateUrl, dataToSubmit);
-          console.log("Update response:", response.data); // Debug log
-        } catch (error) {
-          console.error("Error in API call:", error);
-          if (error.response) {
-            console.error("Error response:", error.response.data);
-          }
-          throw error;
+        } else {
+          // For create operations
+          logger.info(
+            `Creating new ${location.pathname.slice(1)} with data:`,
+            dataToSubmit
+          );
+
+          response = await axiosInstance.post(endpoint.url, dataToSubmit);
         }
-      }
 
-      // Check the response status
-      if (response.status === 200 || response.status === 201) {
-        // Handle both 200 and 201 as success
-        // Close the dialog and clear the form
-        setOpenDialog(false);
-        setSelectedItem(null);
-        setFormData({});
-
-        // Show success message
+        if (response.data.code === 200 || response.data.code === 201) {
+          setSnackbar({
+            open: true,
+            message: response.data.message || "Data saved successfully",
+            severity: "success",
+          });
+          handleDialogClose();
+          fetchData(); // Refresh the data
+        } else {
+          setSubmitError(response.data.message || "Failed to save data");
+          setSnackbar({
+            open: true,
+            message: response.data.message || "Failed to save data",
+            severity: "error",
+          });
+        }
+      } catch (error) {
+        console.error("Submission error:", error);
+        setSubmitError(error.message || "An error occurred");
         setSnackbar({
           open: true,
           message:
-            dialogMode === "add"
-              ? `New ${getBreadcrumbText(location.pathname)
-                  .slice(0, -1)
-                  .toLowerCase()} added successfully!`
-              : `${getBreadcrumbText(location.pathname).slice(
-                  0,
-                  -1
-                )} updated successfully!`,
-          severity: "success",
-        });
-
-        // Refresh the data immediately
-        await fetchData();
-      } else {
-        // If the response status is not 200 or 201, treat it as an error
-        setSnackbar({
-          open: true,
-          message: response.data.message || "Failed to save data",
+            error.response?.data?.message ||
+            error.message ||
+            "An error occurred while saving the data",
           severity: "error",
         });
       }
     } catch (error) {
-      console.error("Submission error:", error);
-      setSnackbar({
-        open: true,
-        message: error.message || "An error occurred while saving the data",
-        severity: "error",
-      });
+      console.error("Validation error:", error);
+      setSubmitError(error.message || "An unexpected error occurred");
     } finally {
       setSubmitting(false);
     }
@@ -1066,6 +1083,20 @@ const SectionPage = () => {
               label: role.name,
             })),
           },
+          // Only show Email Verification field in edit mode
+          ...(dialogMode === "edit"
+            ? [
+                {
+                  name: "isEmailVerified",
+                  label: "Email Verified",
+                  type: "select",
+                  required: false,
+                  options: ["true", "false"],
+                  valueGetter: (value) => value === "true",
+                  helperText: "Update email verification status of the user",
+                },
+              ]
+            : []),
           {
             name: "dateOfBirth",
             label: "Date of Birth",
@@ -1604,7 +1635,12 @@ const SectionPage = () => {
                       ))
                     : field.options.map((option) => (
                         <MenuItem key={option} value={option}>
-                          {option === "true"
+                          {option === "true" && field.name === "isEmailVerified"
+                            ? "Verified"
+                            : option === "false" &&
+                              field.name === "isEmailVerified"
+                            ? "Not Verified"
+                            : option === "true"
                             ? "Active"
                             : option === "false"
                             ? "Inactive"

@@ -58,17 +58,30 @@ const OrdersPage = () => {
       setLoading(true);
       setError(null);
 
-      // Try the main endpoint first
-      const response = await fetch("http://localhost:3000/api/orders", {
+      // Try customer-specific endpoint first
+      let response = await fetch("http://localhost:3000/api/orders/customer", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
       });
 
+      // If customer-specific endpoint fails, fall back to the main endpoint (for backwards compatibility)
       if (!response.ok) {
-        throw new Error(
-          `Failed to fetch orders: ${response.status} ${response.statusText}`
+        console.warn(
+          `Customer-specific endpoint failed with ${response.status}, falling back to main endpoint.`
         );
+
+        response = await fetch("http://localhost:3000/api/orders", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(
+            `Failed to fetch orders: ${response.status} ${response.statusText}`
+          );
+        }
       }
 
       const result = await response.json();

@@ -1,5 +1,5 @@
 const express = require('express');
-const { checkout, updateOrderStatus, getAllOrders, getMonthlyReport, setOrderReadyForPickup } = require('../controllers/orderController');
+const { checkout, updateOrderStatus, getAllOrders, getMonthlyReport, setOrderReadyForPickup, getCustomerOrders } = require('../controllers/orderController');
 const { protect, isWarehouseWorker } = require('../middleware/authMiddleware');
 
 const router = express.Router();
@@ -7,11 +7,10 @@ const router = express.Router();
 // Define specific routes first
 router.post('/checkout', protect, checkout);
 router.patch('/:id/status', protect, updateOrderStatus);
+router.get('/report', protect, getMonthlyReport);
+router.get('/customer', protect, getCustomerOrders);
 router.get('/orders', protect, getAllOrders);
 router.get('/', protect, getAllOrders);
-
-// Define the report route BEFORE the /:id route to prevent conflicts
-router.get('/report', protect, getMonthlyReport);
 
 // Define routes with parameters last
 router.get('/:id', protect, async (req, res) => {

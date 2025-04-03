@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -16,7 +16,8 @@ import {
   LinearProgress,
   Divider,
   IconButton,
-} from '@mui/material';
+  CircularProgress,
+} from "@mui/material";
 import {
   LocalShipping,
   Favorite,
@@ -25,99 +26,137 @@ import {
   LocalOffer,
   Timeline,
   NavigateNext,
-} from '@mui/icons-material';
-import { useSelector } from 'react-redux';
-import { selectUser } from '../../store/slices/authSlice';
+} from "@mui/icons-material";
+import { useSelector } from "react-redux";
+import { selectUser, selectAuthToken } from "../../store/slices/authSlice";
+import logger from "../../utils/logger";
 
 const CustomerDashboard = () => {
   const user = useSelector(selectUser);
-  console.log('User in dashboard:', user); // Add this to debug
+  const token = useSelector(selectAuthToken);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  console.log("User in dashboard:", user); // Add this to debug
 
-  // Static data for demonstration
-  const recentOrders = [
-    {
-      id: 'ORD001',
-      product: 'Gaming Laptop',
-      date: '2024-03-10',
-      status: 'Delivered',
-      amount: 1299.99,
-      image: 'https://via.placeholder.com/50',
-    },
-    {
-      id: 'ORD002',
-      product: 'Wireless Headphones',
-      date: '2024-03-08',
-      status: 'In Transit',
-      amount: 199.99,
-      image: 'https://via.placeholder.com/50',
-    },
-    {
-      id: 'ORD003',
-      product: 'Smartwatch',
-      date: '2024-03-05',
-      status: 'Processing',
-      amount: 299.99,
-      image: 'https://via.placeholder.com/50',
-    },
-  ];
+  // Fetch recent orders for the customer
+  useEffect(() => {
+    const fetchCustomerOrders = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          "http://localhost:3000/api/orders/customer",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
+        if (!response.ok) {
+          throw new Error(`Failed to fetch orders: ${response.status}`);
+        }
+
+        const result = await response.json();
+
+        // Extract orders from the response
+        let orders = [];
+        if (Array.isArray(result)) {
+          orders = result;
+        } else if (result.data && Array.isArray(result.data)) {
+          orders = result.data;
+        } else if (result.code === 200 && result.data) {
+          orders = Array.isArray(result.data.orders)
+            ? result.data.orders
+            : result.data;
+        }
+
+        // Sort by date and take the most recent 3
+        const sortedOrders = orders.sort(
+          (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        setRecentOrders(sortedOrders.slice(0, 3));
+      } catch (err) {
+        console.error("Error fetching customer orders:", err);
+        logger.error("Error fetching customer orders", { error: err.message });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (token) {
+      fetchCustomerOrders();
+    }
+  }, [token]);
+
+  // Static data for demonstration (only used for favorite products)
   const favoriteProducts = [
     {
-      name: 'MacBook Pro',
+      name: "MacBook Pro",
       price: 1999.99,
       rating: 4.8,
-      image: 'https://via.placeholder.com/50',
+      image: "https://via.placeholder.com/50",
     },
     {
-      name: 'iPhone 15 Pro',
+      name: "iPhone 15 Pro",
       price: 999.99,
       rating: 4.9,
-      image: 'https://via.placeholder.com/50',
+      image: "https://via.placeholder.com/50",
     },
     {
-      name: 'AirPods Pro',
+      name: "AirPods Pro",
       price: 249.99,
       rating: 4.7,
-      image: 'https://via.placeholder.com/50',
+      image: "https://via.placeholder.com/50",
     },
   ];
 
   const recentActivities = [
     {
-      action: 'Added item to cart',
-      item: 'Dell XPS 13',
-      time: '2 hours ago',
+      action: "Added item to cart",
+      item: "Dell XPS 13",
+      time: "2 hours ago",
     },
     {
-      action: 'Reviewed product',
-      item: 'Gaming Mouse',
-      time: '5 hours ago',
+      action: "Reviewed product",
+      item: "Gaming Mouse",
+      time: "5 hours ago",
     },
     {
-      action: 'Saved to wishlist',
-      item: 'Mechanical Keyboard',
-      time: '1 day ago',
+      action: "Saved to wishlist",
+      item: "Mechanical Keyboard",
+      time: "1 day ago",
     },
   ];
 
+  // Format date in a readable format
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  // Get appropriate color based on order status
   const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case 'delivered':
-        return 'success';
-      case 'in transit':
-        return 'primary';
-      case 'processing':
-        return 'warning';
-      default:
-        return 'default';
-    }
+    if (!status) return "default";
+
+    const statusLower = status.toLowerCase();
+    if (statusLower.includes("deliver")) return "success";
+    if (statusLower.includes("transit") || statusLower.includes("pickup"))
+      return "primary";
+    if (statusLower.includes("process")) return "info";
+    if (statusLower.includes("pend")) return "warning";
+    if (statusLower.includes("cancel") || statusLower.includes("fail"))
+      return "error";
+    return "default";
   };
 
   return (
-    <Box sx={{ py: 4, backgroundColor: 'background.default' }}>
+    <Box sx={{ py: 4, backgroundColor: "background.default" }}>
       <Container maxWidth="xl">
-        <Typography variant="h4" sx={{ mb: 4, fontWeight: 'bold' }}>
-          Welcome back, {user?.name || 'Guest'}! 👋
+        <Typography variant="h4" sx={{ mb: 4, fontWeight: "bold" }}>
+          Welcome back, {user?.name || "Guest"}! 👋
         </Typography>
 
         {/* Stats Overview */}
@@ -126,15 +165,16 @@ const CustomerDashboard = () => {
             <Paper
               sx={{
                 p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                bgcolor: 'primary.light',
-                color: 'primary.contrastText',
-              }}
-            >
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                bgcolor: "primary.light",
+                color: "primary.contrastText",
+              }}>
               <ShoppingCart sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ mb: 1 }}>12</Typography>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                12
+              </Typography>
               <Typography variant="subtitle2">Total Orders</Typography>
             </Paper>
           </Grid>
@@ -142,15 +182,16 @@ const CustomerDashboard = () => {
             <Paper
               sx={{
                 p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                bgcolor: 'success.light',
-                color: 'success.contrastText',
-              }}
-            >
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                bgcolor: "success.light",
+                color: "success.contrastText",
+              }}>
               <LocalShipping sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ mb: 1 }}>2</Typography>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                2
+              </Typography>
               <Typography variant="subtitle2">Active Shipments</Typography>
             </Paper>
           </Grid>
@@ -158,15 +199,16 @@ const CustomerDashboard = () => {
             <Paper
               sx={{
                 p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                bgcolor: 'warning.light',
-                color: 'warning.contrastText',
-              }}
-            >
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                bgcolor: "warning.light",
+                color: "warning.contrastText",
+              }}>
               <Favorite sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ mb: 1 }}>8</Typography>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                8
+              </Typography>
               <Typography variant="subtitle2">Wishlist Items</Typography>
             </Paper>
           </Grid>
@@ -174,15 +216,16 @@ const CustomerDashboard = () => {
             <Paper
               sx={{
                 p: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                bgcolor: 'error.light',
-                color: 'error.contrastText',
-              }}
-            >
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                bgcolor: "error.light",
+                color: "error.contrastText",
+              }}>
               <LocalOffer sx={{ fontSize: 40, mb: 1 }} />
-              <Typography variant="h4" sx={{ mb: 1 }}>5</Typography>
+              <Typography variant="h4" sx={{ mb: 1 }}>
+                5
+              </Typography>
               <Typography variant="subtitle2">Available Offers</Typography>
             </Paper>
           </Grid>
@@ -191,54 +234,126 @@ const CustomerDashboard = () => {
         <Grid container spacing={4}>
           {/* Recent Orders */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-                <Typography variant="h6">Recent Orders</Typography>
-                <IconButton size="small">
-                  <NavigateNext />
-                </IconButton>
-              </Box>
-              <List>
-                {recentOrders.map((order, index) => (
-                  <React.Fragment key={order.id}>
-                    <ListItem alignItems="flex-start">
-                      <ListItemAvatar>
-                        <Avatar src={order.image} variant="rounded" />
-                      </ListItemAvatar>
-                      <ListItemText
-                        primary={
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="subtitle1">{order.product}</Typography>
-                            <Typography variant="subtitle1" color="primary">
-                              ${order.amount}
-                            </Typography>
-                          </Box>
-                        }
-                        secondary={
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Order ID: {order.id}
-                            </Typography>
-                            <Chip
-                              label={order.status}
-                              size="small"
-                              color={getStatusColor(order.status)}
-                            />
-                          </Box>
-                        }
-                      />
-                    </ListItem>
-                    {index < recentOrders.length - 1 && <Divider variant="inset" component="li" />}
-                  </React.Fragment>
-                ))}
-              </List>
-            </Paper>
+            <Card
+              sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    mb: 2,
+                  }}>
+                  <Typography variant="h6" gutterBottom>
+                    Recent Orders
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => (window.location.href = "/orders")}>
+                    <NavigateNext />
+                  </IconButton>
+                </Box>
+
+                {loading ? (
+                  <Box sx={{ display: "flex", justifyContent: "center", p: 3 }}>
+                    <CircularProgress size={30} />
+                  </Box>
+                ) : recentOrders.length > 0 ? (
+                  <List>
+                    {recentOrders.map((order, index) => (
+                      <React.Fragment key={order._id}>
+                        <ListItem alignItems="flex-start">
+                          <ListItemAvatar>
+                            <Avatar
+                              variant="rounded"
+                              sx={{
+                                backgroundColor: (theme) =>
+                                  theme.palette.grey[100],
+                              }}>
+                              <ShoppingCart color="primary" />
+                            </Avatar>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                }}>
+                                <Typography variant="subtitle1">
+                                  {order.items && order.items.length > 0
+                                    ? `${order.items.length} ${
+                                        order.items.length === 1
+                                          ? "item"
+                                          : "items"
+                                      }`
+                                    : "Order"}
+                                </Typography>
+                                <Typography variant="subtitle1" color="primary">
+                                  ${order.totalAmount?.toFixed(2) || "0.00"}
+                                </Typography>
+                              </Box>
+                            }
+                            secondary={
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  mt: 1,
+                                }}>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary">
+                                  Order ID: {order._id.substring(0, 8)}...
+                                  <br />
+                                  {formatDate(order.createdAt)}
+                                </Typography>
+                                <Chip
+                                  label={order.status || "N/A"}
+                                  size="small"
+                                  color={getStatusColor(order.status)}
+                                />
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < recentOrders.length - 1 && (
+                          <Divider variant="inset" component="li" />
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                ) : (
+                  <Box sx={{ textAlign: "center", py: 4 }}>
+                    <ShoppingCart
+                      sx={{ fontSize: 40, color: "text.secondary", mb: 2 }}
+                    />
+                    <Typography variant="body1" color="text.secondary">
+                      No orders found
+                    </Typography>
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{ mt: 1 }}>
+                      When you place an order, it will appear here
+                    </Typography>
+                  </Box>
+                )}
+              </CardContent>
+            </Card>
           </Grid>
 
           {/* Favorite Products */}
           <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, height: '100%' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+            <Paper sx={{ p: 3, height: "100%" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 3,
+                }}>
                 <Typography variant="h6">Favorite Products</Typography>
                 <IconButton size="small">
                   <NavigateNext />
@@ -253,16 +368,34 @@ const CustomerDashboard = () => {
                       </ListItemAvatar>
                       <ListItemText
                         primary={
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="subtitle1">{product.name}</Typography>
+                          <Box
+                            sx={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}>
+                            <Typography variant="subtitle1">
+                              {product.name}
+                            </Typography>
                             <Typography variant="subtitle1" color="primary">
                               ${product.price}
                             </Typography>
                           </Box>
                         }
                         secondary={
-                          <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                            <Star sx={{ color: 'warning.main', fontSize: 16, mr: 0.5 }} />
+                          <Box
+                            sx={{
+                              display: "flex",
+                              alignItems: "center",
+                              mt: 1,
+                            }}>
+                            <Star
+                              sx={{
+                                color: "warning.main",
+                                fontSize: 16,
+                                mr: 0.5,
+                              }}
+                            />
                             <Typography variant="body2" color="text.secondary">
                               {product.rating}
                             </Typography>
@@ -270,7 +403,9 @@ const CustomerDashboard = () => {
                         }
                       />
                     </ListItem>
-                    {index < favoriteProducts.length - 1 && <Divider variant="inset" component="li" />}
+                    {index < favoriteProducts.length - 1 && (
+                      <Divider variant="inset" component="li" />
+                    )}
                   </React.Fragment>
                 ))}
               </List>
@@ -280,7 +415,13 @@ const CustomerDashboard = () => {
           {/* Recent Activities */}
           <Grid item xs={12}>
             <Paper sx={{ p: 3 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  mb: 3,
+                }}>
                 <Typography variant="h6">Recent Activities</Typography>
                 <IconButton size="small">
                   <Timeline />
@@ -297,7 +438,10 @@ const CustomerDashboard = () => {
                         <Typography variant="body1" sx={{ mt: 1 }}>
                           {activity.action}
                         </Typography>
-                        <Typography variant="subtitle1" color="primary" sx={{ mt: 1 }}>
+                        <Typography
+                          variant="subtitle1"
+                          color="primary"
+                          sx={{ mt: 1 }}>
                           {activity.item}
                         </Typography>
                       </CardContent>
