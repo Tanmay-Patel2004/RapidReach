@@ -29,6 +29,9 @@ const updateDriverActiveTime = async (req, res) => {
   }
 };
 
+
+
+
 // @desc    Get orders available for pickup
 // @route   GET /api/drivers/available-orders
 // @access  Private (Driver)

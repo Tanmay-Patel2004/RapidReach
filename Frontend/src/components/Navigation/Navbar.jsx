@@ -84,7 +84,7 @@ const Navbar = () => {
             icon: <Security />,
           },
           { title: "Warehouse", path: "/warehouse", icon: <Warehouse /> },
-          { title: "Orders", path: "/orders", icon: <OrderIcon /> },
+          //{ title: "Orders", path: "/orders", icon: <OrderIcon /> },
           { title: "Reports", path: "/reports", icon: <AssessmentIcon /> },
         ];
       case "customer":
