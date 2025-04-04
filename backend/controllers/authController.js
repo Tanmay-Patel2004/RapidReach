@@ -121,7 +121,7 @@ const register = asyncHandler(async (req, res) => {
 });
 
 // 🔹 @desc    Login User
-// �� @route   POST /api/auth/login
+// 🔹 @route   POST /api/auth/login
 // 🔹 @access  Public
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -158,6 +158,18 @@ const login = asyncHandler(async (req, res) => {
     // Remove password from response
     const userResponse = user.toObject();
     delete userResponse.password;
+
+    // Set cookie for auth token
+    const isProduction = process.env.NODE_ENV === 'production';
+    res.cookie('authToken', token, {
+      httpOnly: true,
+      secure: isProduction, // Use secure in production
+      sameSite: isProduction ? 'none' : 'lax', // Use None in production
+      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+    });
+
+    // Set CORS headers for cross-origin cookies
+    res.header('Access-Control-Allow-Credentials', 'true');
 
     const { code, message, data } = getHandlerResponse(
       true,
@@ -199,6 +211,12 @@ const logout = asyncHandler(async (req, res) => {
 const verifyAuth = asyncHandler(async (req, res) => {
   // The protect middleware will have already verified the token
   // and attached the user to req.user
+  console.log('Verify Auth endpoint called', {
+    hasUser: !!req.user,
+    userId: req.user?._id,
+    headers: req.headers,
+  });
+
   const { code, message, data } = getHandlerResponse(
     true,
     httpStatus.OK,

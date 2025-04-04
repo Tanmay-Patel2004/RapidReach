@@ -24,7 +24,7 @@ const authSlice = createSlice({
       state.loading = false;
       state.isAuthenticated = true;
       state.error = null;
-      
+
       // Extract user data from the response
       state.user = {
         _id: responseData._id,
@@ -52,6 +52,9 @@ const authSlice = createSlice({
         permissions: state.permissions,
         token: state.token
       }));
+
+      // Store token separately for easier access
+      localStorage.setItem('authToken', responseData.token);
     },
     loginFailure: (state, action) => {
       state.loading = false;

@@ -45,13 +45,28 @@ const LoginPage = () => {
     dispatch(loginStart());
 
     try {
+      logger.info("Attempting login...", { email: formData.email });
+
       const response = await api.fetch("/auth/login", {
         method: "POST",
         body: JSON.stringify(formData),
       });
 
+      logger.info(`Login response status: ${response.status}`);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        logger.error("Login response error:", errorData);
+        throw new Error(errorData.message || "Login failed");
+      }
+
       const result = await response.json();
-      console.log(result);
+      logger.info("Login response successful:", {
+        code: result.code,
+        hasToken: !!result.data?.token,
+        hasUser: !!result.data?._id,
+      });
+
       if (result.code === 200) {
         dispatch(loginSuccess(result.data));
 
@@ -84,11 +99,14 @@ const LoginPage = () => {
         throw new Error(result.message || "Login failed");
       }
     } catch (error) {
+      logger.error("Login failed", {
+        error: error.message,
+        stack: error.stack,
+      });
       dispatch(loginFailure(error.message));
       setToastMessage(error.message || "Login failed");
       setToastSeverity("error");
       setShowToast(true);
-      logger.error("Login failed", { error: error.message });
     }
   };
 

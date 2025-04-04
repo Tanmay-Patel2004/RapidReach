@@ -48,15 +48,28 @@ function App() {
   useEffect(() => {
     const verifyAuth = async () => {
       try {
+        logger.info("Verifying authentication...");
         const response = await api.fetch("/auth/verify");
+        logger.info(`Verify auth response status: ${response.status}`);
+
+        if (!response.ok) {
+          logger.error(`Verify auth failed with status: ${response.status}`);
+          dispatch(logout());
+          return;
+        }
+
         const data = await response.json();
+        logger.info("Verify auth response data:", data);
 
         if (data.code === 200) {
           dispatch(loginSuccess(data.data));
+          logger.info("Authentication verified successfully");
         } else {
+          logger.error("Verify auth returned non-200 code:", data);
           dispatch(logout());
         }
       } catch (error) {
+        logger.error("Auth verification error:", error);
         dispatch(logout());
       }
     };
