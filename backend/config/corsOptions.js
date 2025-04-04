@@ -4,6 +4,8 @@ const allowedOrigins = [
     'http://127.0.0.1:5173',
     'http://127.0.0.1:3000',
     // Add production origins as needed
+    'https://rapidreach-frontend.onrender.com',
+    'https://rapidreach.onrender.com'
 ];
 
 const corsOptions = {
