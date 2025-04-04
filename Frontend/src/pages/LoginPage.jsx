@@ -286,17 +286,22 @@ const LoginPage = () => {
                   borderTop: "1px solid rgba(0,0,0,0.1)",
                   pt: 2,
                 }}>
-                <Link
-                  href="#"
-                  variant="body2"
-                  sx={{
+                <RouterLink
+                  to="/forgot-password"
+                  style={{
+                    textDecoration: "none",
                     color: "#555",
-                    "&:hover": {
-                      color: "#1976d2",
-                    },
                   }}>
-                  Forgot password?
-                </Link>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      "&:hover": {
+                        color: "#1976d2",
+                      },
+                    }}>
+                    Forgot password?
+                  </Typography>
+                </RouterLink>
                 <RouterLink
                   to="/signup"
                   style={{

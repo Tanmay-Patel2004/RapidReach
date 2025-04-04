@@ -6,6 +6,8 @@ import logger from "./utils/logger";
 import Navbar from "./components/Navigation/Navbar";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
+import ForgotPasswordPage from "./pages/ForgotPasswordPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
 import AdminDashboard from "./pages/dashboards/AdminDashboard";
 import CustomerDashboard from "./pages/dashboards/CustomerDashboard";
 import DriverDashboard from "./pages/dashboards/DriverDashboard";
@@ -105,6 +107,8 @@ function App() {
       <Routes>
         <Route path="/" element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );

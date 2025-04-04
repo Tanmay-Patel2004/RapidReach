@@ -16,6 +16,12 @@ import {
   Stepper,
   Step,
   StepLabel,
+  RadioGroup,
+  Radio,
+  FormControlLabel,
+  FormControl,
+  FormLabel,
+  InputAdornment,
 } from "@mui/material";
 import {
   ShoppingCart as CartIcon,
@@ -23,6 +29,8 @@ import {
   Person as PersonIcon,
   Payment as PaymentIcon,
   CheckCircleOutline,
+  CreditCard as CreditCardIcon,
+  Money as MoneyIcon,
 } from "@mui/icons-material";
 import { selectAuthToken } from "../store/slices/authSlice";
 import { selectCartItems, setCartItems } from "../store/slices/cartSlice";
@@ -38,15 +46,29 @@ const CheckoutPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [orderSuccess, setOrderSuccess] = useState(false);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentComplete, setPaymentComplete] = useState(false);
 
   const [formData, setFormData] = useState({
     customerName: "",
     email: "",
     phone: "",
     address: "",
+    paymentMethod: "card", // Default payment method
+    cardDetails: {
+      cardNumber: "",
+      cardHolder: "",
+      expiryDate: "",
+      cvv: "",
+    },
   });
 
-  const steps = ["Review Cart", "Shipping Details", "Confirm Order"];
+  const steps = [
+    "Review Cart",
+    "Shipping Details",
+    "Payment Method",
+    "Confirm Order",
+  ];
 
   const calculateTotalAmount = () => {
     return cartItems.items.reduce((total, item) => {
@@ -106,6 +128,29 @@ const CheckoutPage = () => {
       setLoading(true);
       setError(null);
 
+      // For card payments, show a payment processing step
+      if (formData.paymentMethod === "card") {
+        setPaymentProcessing(true);
+
+        // Mock payment processing - simulate a 2 second delay
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Randomly determine if payment was successful (90% success rate)
+        const isPaymentSuccessful = Math.random() < 0.9;
+
+        if (!isPaymentSuccessful) {
+          setPaymentProcessing(false);
+          throw new Error(
+            "Payment failed. Please try again or use a different payment method."
+          );
+        }
+
+        setPaymentComplete(true);
+
+        // Wait 1 more second before proceeding with order creation
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+      }
+
       // Calculate tax and total with tax
       const subtotal = calculateTotalAmount();
       const tax = calculateTax();
@@ -125,6 +170,9 @@ const CheckoutPage = () => {
             email: formData.email,
             phone: formData.phone,
             address: formData.address,
+            paymentMethod: formData.paymentMethod,
+            paymentStatus:
+              formData.paymentMethod === "cod" ? "pending" : "paid",
             products: cartItems.items.map((item) => ({
               productId: item.productId._id || item.productId,
               name: item.productId.name,
@@ -192,12 +240,136 @@ const CheckoutPage = () => {
   };
 
   const handleNext = () => {
+    // If we're on the Payment Method step and using card payment,
+    // validate card details before proceeding
+    if (activeStep === 2 && formData.paymentMethod === "card") {
+      // Validate card number
+      if (
+        !formData.cardDetails.cardNumber ||
+        formData.cardDetails.cardNumber.length !== 16
+      ) {
+        setError("Please enter a valid 16-digit card number");
+        return;
+      }
+
+      // Validate card holder name
+      if (!formData.cardDetails.cardHolder) {
+        setError("Please enter the card holder name");
+        return;
+      }
+
+      // Validate expiry date (should be in MM/YY format)
+      if (
+        !formData.cardDetails.expiryDate ||
+        !/^\d{2}\/\d{2}$/.test(formData.cardDetails.expiryDate)
+      ) {
+        setError("Please enter a valid expiry date in MM/YY format");
+        return;
+      }
+
+      // Validate CVV (should be 3 digits)
+      if (!formData.cardDetails.cvv || formData.cardDetails.cvv.length !== 3) {
+        setError("Please enter a valid 3-digit CVV");
+        return;
+      }
+
+      // Clear any previous errors
+      setError(null);
+    }
+
+    // If we're on the Shipping Details step, validate shipping information
+    if (activeStep === 1) {
+      // Validate customer name
+      if (!formData.customerName) {
+        setError("Please enter your full name");
+        return;
+      }
+
+      // Validate email
+      if (!formData.email || !/^\S+@\S+\.\S+$/.test(formData.email)) {
+        setError("Please enter a valid email address");
+        return;
+      }
+
+      // Validate phone
+      if (!formData.phone) {
+        setError("Please enter your phone number");
+        return;
+      }
+
+      // Validate address
+      if (!formData.address) {
+        setError("Please enter your shipping address");
+        return;
+      }
+
+      // Clear any previous errors
+      setError(null);
+    }
+
     setActiveStep((prevStep) => prevStep + 1);
   };
 
   const handleBack = () => {
     setActiveStep((prevStep) => prevStep - 1);
   };
+
+  if (paymentProcessing) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 3,
+            }}>
+            <CircularProgress size={60} />
+            <Typography variant="h5" gutterBottom>
+              Processing Payment
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Please wait while we process your payment...
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Do not close this window or refresh the page.
+            </Typography>
+          </Box>
+        </Card>
+      </Container>
+    );
+  }
+
+  if (paymentComplete && !orderSuccess) {
+    return (
+      <Container maxWidth="sm" sx={{ py: 8 }}>
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 3,
+            }}>
+            <CheckCircleOutline sx={{ fontSize: 60, color: "success.main" }} />
+            <Typography variant="h5" gutterBottom>
+              Payment Successful
+            </Typography>
+            <Typography variant="body1" color="text.secondary">
+              Your payment has been processed successfully.
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Your order is now being placed...
+            </Typography>
+            <CircularProgress size={24} />
+          </Box>
+        </Card>
+      </Container>
+    );
+  }
 
   if (orderSuccess) {
     return (
@@ -340,6 +512,195 @@ const CheckoutPage = () => {
               )}
 
               {activeStep === 2 && (
+                <Box component="form">
+                  <Typography variant="h6" gutterBottom>
+                    Payment Method
+                  </Typography>
+
+                  <FormControl
+                    component="fieldset"
+                    sx={{ mb: 3, width: "100%" }}>
+                    <FormLabel component="legend">
+                      Select a payment method
+                    </FormLabel>
+                    <RadioGroup
+                      name="paymentMethod"
+                      value={formData.paymentMethod}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          paymentMethod: e.target.value,
+                        }))
+                      }>
+                      <FormControlLabel
+                        value="card"
+                        control={<Radio />}
+                        label={
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <CreditCardIcon sx={{ mr: 1 }} />
+                            <Typography>Credit/Debit Card</Typography>
+                          </Box>
+                        }
+                      />
+                      <FormControlLabel
+                        value="cod"
+                        control={<Radio />}
+                        label={
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <MoneyIcon sx={{ mr: 1 }} />
+                            <Typography>Cash on Delivery (COD)</Typography>
+                          </Box>
+                        }
+                      />
+                    </RadioGroup>
+                  </FormControl>
+
+                  {formData.paymentMethod === "card" && (
+                    <Grid container spacing={3}>
+                      <Grid item xs={12}>
+                        <TextField
+                          required
+                          fullWidth
+                          label="Card Number"
+                          name="cardNumber"
+                          value={formData.cardDetails.cardNumber}
+                          onChange={(e) => {
+                            // Only allow numbers and limit to 16 digits
+                            const value = e.target.value
+                              .replace(/[^\d]/g, "")
+                              .slice(0, 16);
+                            setFormData((prev) => ({
+                              ...prev,
+                              cardDetails: {
+                                ...prev.cardDetails,
+                                cardNumber: value,
+                              },
+                            }));
+                          }}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <CreditCardIcon />
+                              </InputAdornment>
+                            ),
+                          }}
+                          placeholder="•••• •••• •••• ••••"
+                          error={
+                            formData.cardDetails.cardNumber &&
+                            formData.cardDetails.cardNumber.length < 16
+                          }
+                          helperText={
+                            formData.cardDetails.cardNumber &&
+                            formData.cardDetails.cardNumber.length < 16
+                              ? "Card number must be 16 digits"
+                              : ""
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12}>
+                        <TextField
+                          required
+                          fullWidth
+                          label="Card Holder Name"
+                          name="cardHolder"
+                          value={formData.cardDetails.cardHolder}
+                          onChange={(e) =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              cardDetails: {
+                                ...prev.cardDetails,
+                                cardHolder: e.target.value,
+                              },
+                            }))
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          required
+                          fullWidth
+                          label="Expiry Date"
+                          name="expiryDate"
+                          placeholder="MM/YY"
+                          value={formData.cardDetails.expiryDate}
+                          onChange={(e) => {
+                            let value = e.target.value
+                              .replace(/[^\d]/g, "")
+                              .slice(0, 4);
+
+                            // Format as MM/YY
+                            if (value.length > 2) {
+                              value = value.slice(0, 2) + "/" + value.slice(2);
+                            }
+
+                            setFormData((prev) => ({
+                              ...prev,
+                              cardDetails: {
+                                ...prev.cardDetails,
+                                expiryDate: value,
+                              },
+                            }));
+                          }}
+                          error={
+                            formData.cardDetails.expiryDate &&
+                            formData.cardDetails.expiryDate.length < 5
+                          }
+                          helperText={
+                            formData.cardDetails.expiryDate &&
+                            formData.cardDetails.expiryDate.length < 5
+                              ? "Format: MM/YY"
+                              : ""
+                          }
+                        />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <TextField
+                          required
+                          fullWidth
+                          label="CVV"
+                          name="cvv"
+                          value={formData.cardDetails.cvv}
+                          onChange={(e) => {
+                            // Only allow numbers and limit to 3 digits
+                            const value = e.target.value
+                              .replace(/[^\d]/g, "")
+                              .slice(0, 3);
+                            setFormData((prev) => ({
+                              ...prev,
+                              cardDetails: {
+                                ...prev.cardDetails,
+                                cvv: value,
+                              },
+                            }));
+                          }}
+                          InputProps={{
+                            inputProps: { maxLength: 3 },
+                          }}
+                          error={
+                            formData.cardDetails.cvv &&
+                            formData.cardDetails.cvv.length < 3
+                          }
+                          helperText={
+                            formData.cardDetails.cvv &&
+                            formData.cardDetails.cvv.length < 3
+                              ? "CVV must be 3 digits"
+                              : ""
+                          }
+                        />
+                      </Grid>
+                    </Grid>
+                  )}
+
+                  {formData.paymentMethod === "cod" && (
+                    <Alert severity="info" sx={{ mt: 2 }}>
+                      You've selected Cash on Delivery. You'll pay when your
+                      order is delivered.
+                    </Alert>
+                  )}
+                </Box>
+              )}
+
+              {activeStep === 3 && (
                 <Box>
                   <Typography variant="h6" gutterBottom>
                     Order Summary
@@ -438,6 +799,67 @@ const CheckoutPage = () => {
                               {formData.address}
                             </Typography>
                           </Grid>
+                        </Grid>
+                      </CardContent>
+                    </Card>
+                  </Box>
+
+                  {/* Payment Method */}
+                  <Box sx={{ mb: 4 }}>
+                    <Typography
+                      variant="subtitle1"
+                      gutterBottom
+                      sx={{ fontWeight: 600 }}>
+                      Payment Method
+                    </Typography>
+                    <Card sx={{ bgcolor: "grey.50" }}>
+                      <CardContent>
+                        <Grid container spacing={2}>
+                          <Grid item xs={12}>
+                            <Typography variant="body2" color="text.secondary">
+                              Payment Type
+                            </Typography>
+                            <Typography
+                              variant="body1"
+                              sx={{ display: "flex", alignItems: "center" }}>
+                              {formData.paymentMethod === "card" ? (
+                                <>
+                                  <CreditCardIcon sx={{ mr: 1 }} />
+                                  Credit/Debit Card
+                                </>
+                              ) : (
+                                <>
+                                  <MoneyIcon sx={{ mr: 1 }} />
+                                  Cash on Delivery
+                                </>
+                              )}
+                            </Typography>
+                          </Grid>
+                          {formData.paymentMethod === "card" && (
+                            <>
+                              <Grid item xs={12} sm={6}>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary">
+                                  Card Holder
+                                </Typography>
+                                <Typography variant="body1">
+                                  {formData.cardDetails.cardHolder}
+                                </Typography>
+                              </Grid>
+                              <Grid item xs={12} sm={6}>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary">
+                                  Card Number
+                                </Typography>
+                                <Typography variant="body1">
+                                  •••• •••• ••••{" "}
+                                  {formData.cardDetails.cardNumber.slice(-4)}
+                                </Typography>
+                              </Grid>
+                            </>
+                          )}
                         </Grid>
                       </CardContent>
                     </Card>

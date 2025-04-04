@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 const orderSchema = new mongoose.Schema({
     user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // Represents userId (customerId)
     customerName: { type: String, required: true }, // Added customer name
+    email: { type: String },
+    phone: { type: String },
+    address: { type: String },
     items: [
         {
             productId: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true }, // Added product ID
@@ -15,6 +18,8 @@ const orderSchema = new mongoose.Schema({
     tax: { type: Number, required: true }, // Tax amount
     taxRate: { type: Number, default: 0.13 }, // Tax rate (13%)
     totalAmount: { type: Number, required: true }, // Total amount including tax
+    paymentMethod: { type: String, enum: ['card', 'cod'], default: 'card' }, // Payment method (Credit/Debit Card or Cash on Delivery)
+    paymentStatus: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' }, // Payment status
     status: { type: String, default: 'Pending' },
     assignedDrivers: [
         {

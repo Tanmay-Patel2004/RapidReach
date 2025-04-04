@@ -6,6 +6,7 @@ const bcrypt = require('bcryptjs');
 const asyncHandler = require('express-async-handler');
 const { getHandlerResponse } = require('../middleware/responseMiddleware');
 const httpStatus = require('../Helper/http_status');
+const crypto = require('crypto');
 
 // Cookie options for JWT
 const cookieOptions = {
@@ -120,7 +121,7 @@ const register = asyncHandler(async (req, res) => {
 });
 
 // 🔹 @desc    Login User
-// 🔹 @route   POST /api/auth/login
+// �� @route   POST /api/auth/login
 // 🔹 @access  Public
 const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
@@ -144,7 +145,7 @@ const login = asyncHandler(async (req, res) => {
     // Get permissions
     const rolePermissions = await RolePermission.find({ roleId: user.role_id._id })
       .populate('permissionId');
-    
+
     const permissions = rolePermissions.map(rp => rp.permissionId);
 
     // Create token
@@ -214,9 +215,144 @@ const verifyAuth = asyncHandler(async (req, res) => {
   res.status(code).json({ code, message, data });
 });
 
+// 🔹 @desc    Forgot Password - Request password reset
+// 🔹 @route   POST /api/auth/forgot-password
+// 🔹 @access  Public
+const forgotPassword = asyncHandler(async (req, res) => {
+  const { email } = req.body;
+
+  if (!email) {
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.BAD_REQUEST,
+      'Email is required',
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  }
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      const { code, message, data } = getHandlerResponse(
+        false,
+        httpStatus.NOT_FOUND,
+        'No user found with this email address',
+        null
+      );
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Generate a password reset token (random string)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // Hash the token and set expiry to 1 hour
+    user.resetPasswordToken = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+    user.resetPasswordExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    await user.save();
+
+    // In a real application, you would send an email with the reset link
+    // For this implementation, we'll just return the token
+    console.log(`Password reset requested for user: ${user._id}`);
+    console.log(`Reset token: ${resetToken}`);
+
+    const { code, message, data } = getHandlerResponse(
+      true,
+      httpStatus.OK,
+      'Password reset token generated successfully',
+      { resetToken }
+    );
+    return res.status(code).json({ code, message, data });
+  } catch (error) {
+    console.error('Password Reset Error:', error);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message,
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  }
+});
+
+// 🔹 @desc    Reset Password - Set new password using token
+// 🔹 @route   POST /api/auth/reset-password
+// 🔹 @access  Public
+const resetPassword = asyncHandler(async (req, res) => {
+  const { token, password } = req.body;
+
+  if (!token || !password) {
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.BAD_REQUEST,
+      'Token and password are required',
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  }
+
+  try {
+    // Hash the token from the URL
+    const hashedToken = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    // Find user with matching token and token expiry > current time
+    const user = await User.findOne({
+      resetPasswordToken: hashedToken,
+      resetPasswordExpires: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      const { code, message, data } = getHandlerResponse(
+        false,
+        httpStatus.BAD_REQUEST,
+        'Invalid or expired token',
+        null
+      );
+      return res.status(code).json({ code, message, data });
+    }
+
+    // Set new password and clear reset fields
+    user.password = password;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    console.log(`Password reset successful for user: ${user._id}`);
+
+    const { code, message, data } = getHandlerResponse(
+      true,
+      httpStatus.OK,
+      'Password has been reset successfully',
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  } catch (error) {
+    console.error('Password Reset Error:', error);
+    const { code, message, data } = getHandlerResponse(
+      false,
+      httpStatus.INTERNAL_SERVER_ERROR,
+      error.message,
+      null
+    );
+    return res.status(code).json({ code, message, data });
+  }
+});
+
 module.exports = {
   register,
   login,
   logout,
-  verifyAuth
+  verifyAuth,
+  forgotPassword,
+  resetPassword
 };
