@@ -18,17 +18,25 @@ import {
   Tab,
   Tooltip,
   Snackbar,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
 } from "@mui/material";
 import {
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
   ShoppingBag as OrderIcon,
   LocalShipping as ShippingIcon,
-  Inventory as InventoryIcon,
   CheckCircle as DeliveredIcon,
   Pending as PendingIcon,
   Download as DownloadIcon,
   StoreOutlined as StoreIcon,
+  Person as PersonIcon,
+  FormatListBulleted as ListIcon,
 } from "@mui/icons-material";
 import {
   selectAuthToken,
@@ -53,6 +61,7 @@ const OrdersPage = () => {
     severity: "success",
   });
   const [statusFilter, setStatusFilter] = useState("all");
+  const [adminView, setAdminView] = useState(false);
   const theme = useTheme();
 
   const sortOrdersByDate = (orders) => {
@@ -60,6 +69,13 @@ const OrdersPage = () => {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
   };
+
+  useEffect(() => {
+    // Set admin view based on user role
+    if (isAdmin()) {
+      setAdminView(true);
+    }
+  }, [userRole, user]);
 
   const fetchOrders = async () => {
     try {
@@ -69,30 +85,40 @@ const OrdersPage = () => {
       const apiUrl =
         import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
-      // Try customer-specific endpoint first
-      let response = await fetch(`${apiUrl}/orders/customer`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      // If customer-specific endpoint fails, fall back to the main endpoint (for backwards compatibility)
-      if (!response.ok) {
-        console.warn(
-          `Customer-specific endpoint failed with ${response.status}, falling back to main endpoint.`
-        );
-
+      // Admin uses a different endpoint that includes driver information
+      let response;
+      if (isAdmin()) {
         response = await fetch(`${apiUrl}/orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
         });
+      } else {
+        // Try customer-specific endpoint first
+        response = await fetch(`${apiUrl}/orders/customer`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
+        // If customer-specific endpoint fails, fall back to the main endpoint
         if (!response.ok) {
-          throw new Error(
-            `Failed to fetch orders: ${response.status} ${response.statusText}`
+          console.warn(
+            `Customer-specific endpoint failed with ${response.status}, falling back to main endpoint.`
           );
+
+          response = await fetch(`${apiUrl}/orders`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
         }
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch orders: ${response.status} ${response.statusText}`
+        );
       }
 
       const result = await response.json();
@@ -219,7 +245,11 @@ const OrdersPage = () => {
       doc.text(`Order ID: #${order._id.slice(-8).toUpperCase()}`, 14, 30);
       doc.text(`Date: ${formatDate(order.createdAt)}`, 14, 37);
       doc.text(`Status: ${order.status}`, 14, 44);
-      doc.text(`Customer: ${user?.name || "Customer"}`, 14, 51);
+      doc.text(
+        `Customer: ${order.customerName || user?.name || "Customer"}`,
+        14,
+        51
+      );
 
       // Add items table
       const tableColumn = ["Item", "Quantity", "Price", "Total"];
@@ -276,7 +306,262 @@ const OrdersPage = () => {
     }
   };
 
-  const renderOrders = () => {
+  // Render admin orders table
+  const renderAdminOrdersTable = () => {
+    if (filteredOrders.length === 0) {
+      return (
+        <Card sx={{ p: 4, textAlign: "center" }}>
+          <OrderIcon sx={{ fontSize: 60, color: "text.secondary", mb: 2 }} />
+          <Typography variant="h6" color="text.secondary" gutterBottom>
+            No Orders Found
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {statusFilter === "all"
+              ? "No orders to display."
+              : `No ${statusFilter} orders found.`}
+          </Typography>
+        </Card>
+      );
+    }
+
+    return (
+      <TableContainer component={Paper} sx={{ mt: 2 }}>
+        <Table sx={{ minWidth: 650 }} aria-label="orders table">
+          <TableHead>
+            <TableRow sx={{ backgroundColor: theme.palette.grey[100] }}>
+              <TableCell>Order ID</TableCell>
+              <TableCell>Customer</TableCell>
+              <TableCell>Items</TableCell>
+              <TableCell>Total</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Driver</TableCell>
+              <TableCell align="center">Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {filteredOrders.map((order) => {
+              // Improved driver detection logic with console logging for debugging
+              const hasDriver =
+                order.assignedDrivers && order.assignedDrivers.length > 0;
+
+              // Get driver name with better fallbacks
+              let driverName = "Not Assigned";
+              let driverInfo = null;
+
+              if (hasDriver) {
+                driverInfo = order.assignedDrivers[0];
+
+                // Log the driver info for debugging
+                console.log("Driver info for order " + order._id, driverInfo);
+
+                if (driverInfo.driverName) {
+                  driverName = driverInfo.driverName;
+                } else if (driverInfo.name) {
+                  driverName = driverInfo.name;
+                } else if (driverInfo.driver) {
+                  // If there's a nested driver object
+                  driverName =
+                    driverInfo.driver.name ||
+                    driverInfo.driver.email ||
+                    "Unknown Driver";
+                } else if (driverInfo.driverId) {
+                  // Try to make driver ID more user-friendly
+                  if (
+                    typeof driverInfo.driverId === "object" &&
+                    driverInfo.driverId.name
+                  ) {
+                    driverName = driverInfo.driverId.name;
+                  } else if (
+                    typeof driverInfo.driverId === "object" &&
+                    driverInfo.driverId.email
+                  ) {
+                    driverName = driverInfo.driverId.email;
+                  } else if (typeof driverInfo.driverId === "string") {
+                    // Only use last 6 chars of ID to make it shorter
+                    driverName =
+                      "Driver #" +
+                      driverInfo.driverId.substring(
+                        driverInfo.driverId.length - 6
+                      );
+                  }
+                } else if (driverInfo.email) {
+                  driverName = driverInfo.email;
+                } else {
+                  driverName = "Driver Assigned (ID Unknown)";
+                }
+              }
+
+              return (
+                <TableRow
+                  key={order._id}
+                  sx={{
+                    "&:hover": { backgroundColor: theme.palette.grey[50] },
+                    borderLeft: hasDriver
+                      ? `4px solid ${theme.palette.primary.main}`
+                      : "none",
+                  }}>
+                  <TableCell>#{order._id.slice(-8).toUpperCase()}</TableCell>
+                  <TableCell>{order.customerName || "Customer"}</TableCell>
+                  <TableCell>{order.items?.length || 0} items</TableCell>
+                  <TableCell>${order.totalAmount.toFixed(2)}</TableCell>
+                  <TableCell>{formatDate(order.createdAt)}</TableCell>
+                  <TableCell>
+                    <Chip
+                      icon={getStatusIcon(order.status)}
+                      label={order.status}
+                      color={getStatusColor(order.status)}
+                      size="small"
+                    />
+                  </TableCell>
+                  <TableCell>
+                    {hasDriver ? (
+                      <Chip
+                        icon={<PersonIcon />}
+                        label={driverName}
+                        color="primary"
+                        variant="outlined"
+                        size="small"
+                      />
+                    ) : (
+                      <Chip
+                        label="Not Assigned"
+                        color="default"
+                        variant="outlined"
+                        size="small"
+                      />
+                    )}
+                  </TableCell>
+                  <TableCell align="center">
+                    <Box sx={{ display: "flex", justifyContent: "center" }}>
+                      <Tooltip title="View Details">
+                        <IconButton
+                          onClick={() =>
+                            setExpandedOrder(
+                              expandedOrder === order._id ? null : order._id
+                            )
+                          }
+                          size="small"
+                          sx={{ mr: 1 }}>
+                          {expandedOrder === order._id ? (
+                            <ExpandLessIcon />
+                          ) : (
+                            <ExpandMoreIcon />
+                          )}
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Download Receipt">
+                        <IconButton
+                          onClick={() => downloadReceipt(order)}
+                          color="primary"
+                          size="small">
+                          <DownloadIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
+
+                    <Collapse
+                      in={expandedOrder === order._id}
+                      timeout="auto"
+                      unmountOnExit>
+                      <Box sx={{ m: 2, ml: 0 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                          Order Items:
+                        </Typography>
+                        <Table size="small">
+                          <TableHead>
+                            <TableRow>
+                              <TableCell>Product</TableCell>
+                              <TableCell align="right">Quantity</TableCell>
+                              <TableCell align="right">Price</TableCell>
+                              <TableCell align="right">Total</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {order.items &&
+                              order.items.map((item, index) => (
+                                <TableRow key={index}>
+                                  <TableCell>{item.name}</TableCell>
+                                  <TableCell align="right">
+                                    {item.quantity}
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    ${item.price.toFixed(2)}
+                                  </TableCell>
+                                  <TableCell align="right">
+                                    ${(item.price * item.quantity).toFixed(2)}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            <TableRow>
+                              <TableCell colSpan={2} />
+                              <TableCell align="right">
+                                <strong>Total:</strong>
+                              </TableCell>
+                              <TableCell align="right">
+                                <strong>${order.totalAmount.toFixed(2)}</strong>
+                              </TableCell>
+                            </TableRow>
+                          </TableBody>
+                        </Table>
+
+                        {order.address && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Delivery Address:
+                            </Typography>
+                            <Typography variant="body2" sx={{ ml: 2 }}>
+                              {[
+                                order.address.street,
+                                order.address.unitNumber,
+                                order.address.province,
+                                order.address.country,
+                                order.address.zipCode,
+                              ]
+                                .filter(Boolean)
+                                .join(", ")}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {hasDriver && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Driver Information:
+                            </Typography>
+                            <Typography variant="body2" sx={{ ml: 2 }}>
+                              Name: {driverName}
+                            </Typography>
+                            {driverInfo && driverInfo.email && (
+                              <Typography variant="body2" sx={{ ml: 2 }}>
+                                Email: {driverInfo.email}
+                              </Typography>
+                            )}
+                            {driverInfo && driverInfo.phone && (
+                              <Typography variant="body2" sx={{ ml: 2 }}>
+                                Phone: {driverInfo.phone}
+                              </Typography>
+                            )}
+                            {driverInfo && driverInfo.assignedAt && (
+                              <Typography variant="body2" sx={{ ml: 2 }}>
+                                Assigned: {formatDate(driverInfo.assignedAt)}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+                      </Box>
+                    </Collapse>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
+  const renderCustomerOrders = () => {
     if (filteredOrders.length === 0) {
       return (
         <Card sx={{ p: 4, textAlign: "center" }}>
@@ -420,7 +705,7 @@ const OrdersPage = () => {
   return (
     <Container maxWidth="lg" sx={{ py: 4, mt: 8 }}>
       <Typography variant="h4" gutterBottom>
-        Order History
+        {adminView ? "Order Management" : "Order History"}
       </Typography>
 
       {error && (
@@ -464,6 +749,8 @@ const OrdersPage = () => {
         <Tab
           label="All Orders"
           value="all"
+          icon={<ListIcon />}
+          iconPosition="start"
           sx={{
             fontWeight: statusFilter === "all" ? "bold" : "normal",
           }}
@@ -544,8 +831,10 @@ const OrdersPage = () => {
           }}>
           <CircularProgress />
         </Box>
+      ) : adminView ? (
+        renderAdminOrdersTable()
       ) : (
-        renderOrders()
+        renderCustomerOrders()
       )}
 
       {/* Snackbar for notifications */}
