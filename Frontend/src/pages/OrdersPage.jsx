@@ -14,6 +14,10 @@ import {
   IconButton,
   Collapse,
   Button,
+  Tabs,
+  Tab,
+  Tooltip,
+  Snackbar,
 } from "@mui/material";
 import {
   ExpandMore as ExpandMoreIcon,
@@ -23,6 +27,8 @@ import {
   Inventory as InventoryIcon,
   CheckCircle as DeliveredIcon,
   Pending as PendingIcon,
+  Download as DownloadIcon,
+  StoreOutlined as StoreIcon,
 } from "@mui/icons-material";
 import {
   selectAuthToken,
@@ -37,6 +43,7 @@ const OrdersPage = () => {
   const user = useSelector(selectUser);
   const userRole = useSelector(selectUserRole);
   const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [expandedOrder, setExpandedOrder] = useState(null);
@@ -45,6 +52,7 @@ const OrdersPage = () => {
     message: "",
     severity: "success",
   });
+  const [statusFilter, setStatusFilter] = useState("all");
   const theme = useTheme();
 
   const sortOrdersByDate = (orders) => {
@@ -58,8 +66,11 @@ const OrdersPage = () => {
       setLoading(true);
       setError(null);
 
+      const apiUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:3000/api";
+
       // Try customer-specific endpoint first
-      let response = await fetch("http://localhost:3000/api/orders/customer", {
+      let response = await fetch(`${apiUrl}/orders/customer`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -71,7 +82,7 @@ const OrdersPage = () => {
           `Customer-specific endpoint failed with ${response.status}, falling back to main endpoint.`
         );
 
-        response = await fetch("http://localhost:3000/api/orders", {
+        response = await fetch(`${apiUrl}/orders`, {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -105,7 +116,9 @@ const OrdersPage = () => {
         console.warn("Unknown response format from API:", result);
       }
 
-      setOrders(sortOrdersByDate(orderData));
+      const sortedOrders = sortOrdersByDate(orderData);
+      setOrders(sortedOrders);
+      filterOrders(sortedOrders, statusFilter);
     } catch (err) {
       console.error("Error fetching orders:", err);
       setError(err.message);
@@ -113,6 +126,25 @@ const OrdersPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filter orders based on status
+  const filterOrders = (ordersToFilter, status) => {
+    if (status === "all") {
+      setFilteredOrders(ordersToFilter);
+    } else {
+      setFilteredOrders(
+        ordersToFilter.filter(
+          (order) => order.status.toLowerCase() === status.toLowerCase()
+        )
+      );
+    }
+  };
+
+  // Handle tab change
+  const handleTabChange = (event, newValue) => {
+    setStatusFilter(newValue);
+    filterOrders(orders, newValue);
   };
 
   useEffect(() => {
@@ -134,9 +166,9 @@ const OrdersPage = () => {
     switch (status.toLowerCase()) {
       case "pending":
         return <PendingIcon sx={{ color: theme.palette.warning.main }} />;
-      case "processing":
-        return <InventoryIcon sx={{ color: theme.palette.info.main }} />;
-      case "shipped":
+      case "ready for pickup":
+        return <StoreIcon sx={{ color: theme.palette.info.main }} />;
+      case "out for delivery":
         return <ShippingIcon sx={{ color: theme.palette.primary.main }} />;
       case "delivered":
         return <DeliveredIcon sx={{ color: theme.palette.success.main }} />;
@@ -149,9 +181,9 @@ const OrdersPage = () => {
     switch (status.toLowerCase()) {
       case "pending":
         return "warning";
-      case "processing":
+      case "ready for pickup":
         return "info";
-      case "shipped":
+      case "out for delivery":
         return "primary";
       case "delivered":
         return "success";
@@ -169,8 +201,83 @@ const OrdersPage = () => {
     );
   };
 
+  // Download receipt function
+  const downloadReceipt = async (order) => {
+    try {
+      // Dynamically import jsPDF and jspdf-autotable
+      const { jsPDF } = await import("jspdf");
+      const autoTable = (await import("jspdf-autotable")).default;
+
+      const doc = new jsPDF();
+
+      // Add header
+      doc.setFontSize(20);
+      doc.text("Order Receipt", 105, 15, { align: "center" });
+
+      // Add order details
+      doc.setFontSize(12);
+      doc.text(`Order ID: #${order._id.slice(-8).toUpperCase()}`, 14, 30);
+      doc.text(`Date: ${formatDate(order.createdAt)}`, 14, 37);
+      doc.text(`Status: ${order.status}`, 14, 44);
+      doc.text(`Customer: ${user?.name || "Customer"}`, 14, 51);
+
+      // Add items table
+      const tableColumn = ["Item", "Quantity", "Price", "Total"];
+      const tableRows = [];
+
+      order.items.forEach((item) => {
+        const tableRow = [
+          item.name,
+          item.quantity,
+          `$${item.price.toFixed(2)}`,
+          `$${(item.price * item.quantity).toFixed(2)}`,
+        ];
+        tableRows.push(tableRow);
+      });
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 58,
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [66, 139, 202] },
+      });
+
+      // Add total after the table
+      const finalY = doc.lastAutoTable.finalY + 10;
+      doc.text(`Total Amount: $${order.totalAmount.toFixed(2)}`, 150, finalY, {
+        align: "right",
+      });
+
+      // Add footer
+      doc.setFontSize(10);
+      doc.text(
+        `Generated on ${new Date().toLocaleDateString()} - RapidReach`,
+        105,
+        doc.internal.pageSize.height - 10,
+        { align: "center" }
+      );
+
+      // Save the PDF
+      doc.save(`Receipt_Order_${order._id.slice(-8).toUpperCase()}.pdf`);
+
+      setSnackbar({
+        open: true,
+        message: "Receipt downloaded successfully",
+        severity: "success",
+      });
+    } catch (error) {
+      console.error("Error generating receipt:", error);
+      setSnackbar({
+        open: true,
+        message: "Failed to download receipt: " + error.message,
+        severity: "error",
+      });
+    }
+  };
+
   const renderOrders = () => {
-    if (orders.length === 0) {
+    if (filteredOrders.length === 0) {
       return (
         <Card sx={{ p: 4, textAlign: "center" }}>
           <OrderIcon sx={{ fontSize: 60, color: "text.secondary", mb: 2 }} />
@@ -178,7 +285,9 @@ const OrdersPage = () => {
             No Orders Found
           </Typography>
           <Typography variant="body2" color="text.secondary">
-            You haven't placed any orders yet.
+            {statusFilter === "all"
+              ? "You haven't placed any orders yet."
+              : `You don't have any ${statusFilter} orders.`}
           </Typography>
         </Card>
       );
@@ -186,32 +295,11 @@ const OrdersPage = () => {
 
     return (
       <>
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" gutterBottom sx={{ color: "primary.main" }}>
-            Latest Order
-          </Typography>
-          <Card
-            sx={{
-              borderLeft: 4,
-              borderColor: "primary.main",
-              boxShadow: (theme) => theme.shadows[3],
-            }}>
-            {renderOrderCard(orders[0], true)}
+        {filteredOrders.map((order, index) => (
+          <Card key={order._id} sx={{ mb: 3 }}>
+            {renderOrderCard(order, index === 0 && statusFilter === "all")}
           </Card>
-        </Box>
-
-        {orders.length > 1 && (
-          <>
-            <Typography variant="h6" gutterBottom sx={{ mt: 4 }}>
-              Previous Orders
-            </Typography>
-            {orders.slice(1).map((order) => (
-              <Card key={order._id} sx={{ mb: 3 }}>
-                {renderOrderCard(order)}
-              </Card>
-            ))}
-          </>
-        )}
+        ))}
       </>
     );
   };
@@ -241,7 +329,7 @@ const OrdersPage = () => {
           </Typography>
           <Typography variant="body1">{formatDate(order.createdAt)}</Typography>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={12} sm={2}>
           <Typography variant="subtitle2" color="text.secondary">
             Total Amount
           </Typography>
@@ -249,7 +337,7 @@ const OrdersPage = () => {
             ${order.totalAmount.toFixed(2)}
           </Typography>
         </Grid>
-        <Grid item xs={12} sm={3}>
+        <Grid item xs={12} sm={2}>
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             {getStatusIcon(order.status)}
             <Chip
@@ -259,15 +347,29 @@ const OrdersPage = () => {
             />
           </Box>
         </Grid>
+        <Grid item xs={12} sm={2}>
+          <Box sx={{ display: "flex", justifyContent: "flex-end" }}>
+            <IconButton
+              onClick={() =>
+                setExpandedOrder(expandedOrder === order._id ? null : order._id)
+              }
+              sx={{ mr: 1 }}>
+              {expandedOrder === order._id ? (
+                <ExpandLessIcon />
+              ) : (
+                <ExpandMoreIcon />
+              )}
+            </IconButton>
+            <Tooltip title="Download Receipt">
+              <IconButton
+                onClick={() => downloadReceipt(order)}
+                color="primary">
+                <DownloadIcon />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        </Grid>
       </Grid>
-
-      <IconButton
-        onClick={() =>
-          setExpandedOrder(expandedOrder === order._id ? null : order._id)
-        }
-        sx={{ mt: 1 }}>
-        {expandedOrder === order._id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-      </IconButton>
 
       <Collapse in={expandedOrder === order._id}>
         <Divider sx={{ my: 2 }} />
@@ -310,120 +412,10 @@ const OrdersPage = () => {
               No items found in this order.
             </Typography>
           )}
-
-          <Box
-            sx={{ mt: 3, p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
-            <Typography variant="h6" gutterBottom>
-              Order Summary
-            </Typography>
-            <Grid container spacing={1}>
-              <Grid item xs={12}>
-                <Grid container justifyContent="space-between">
-                  <Typography variant="body1">Subtotal</Typography>
-                  <Typography variant="body1">
-                    $
-                    {order.subtotal
-                      ? order.subtotal.toFixed(2)
-                      : order.totalAmount.toFixed(2)}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid item xs={12}>
-                <Grid container justifyContent="space-between">
-                  <Typography variant="body1">Tax (13%)</Typography>
-                  <Typography variant="body1">
-                    $
-                    {order.tax
-                      ? order.tax.toFixed(2)
-                      : (order.totalAmount * 0.13).toFixed(2)}
-                  </Typography>
-                </Grid>
-              </Grid>
-              <Grid item xs={12}>
-                <Divider sx={{ my: 1 }} />
-                <Grid container justifyContent="space-between">
-                  <Typography variant="h6">Total</Typography>
-                  <Typography variant="h6" color="primary">
-                    ${order.totalAmount.toFixed(2)}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Grid>
-          </Box>
-
-          {isAdmin() &&
-            (order.status === "Pending" || order.status === "Processing") && (
-              <Box sx={{ mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  fullWidth
-                  startIcon={<ShippingIcon />}
-                  onClick={() => markAsReadyForPickup(order._id)}
-                  disabled={loading}>
-                  Mark as Ready for Pickup
-                </Button>
-              </Box>
-            )}
         </Box>
       </Collapse>
     </CardContent>
   );
-
-  const markAsReadyForPickup = async (orderId) => {
-    try {
-      setLoading(true);
-
-      const response = await fetch(
-        `http://localhost:3000/api/orders/${orderId}/ready-for-pickup`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      setSnackbar({
-        open: true,
-        message: "Order marked as ready for pickup successfully!",
-        severity: "success",
-      });
-
-      fetchOrders();
-    } catch (error) {
-      console.error("Error marking order as ready for pickup:", error);
-      setSnackbar({
-        open: true,
-        message: `Failed to mark order as ready for pickup: ${error.message}`,
-        severity: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (loading) {
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          minHeight: "60vh",
-        }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
 
   return (
     <Container maxWidth="lg" sx={{ py: 4, mt: 8 }}>
@@ -436,6 +428,111 @@ const OrdersPage = () => {
           {error}
         </Alert>
       )}
+
+      {/* Status filter tabs */}
+      <Tabs
+        value={statusFilter}
+        onChange={handleTabChange}
+        sx={{
+          mb: 3,
+          borderBottom: 1,
+          borderColor: "divider",
+          "& .MuiTabs-flexContainer": {
+            gap: 1,
+          },
+          "& .MuiTab-root": {
+            minWidth: "auto",
+            borderRadius: "8px 8px 0 0",
+            transition: "all 0.2s ease-in-out",
+            "&:hover": {
+              backgroundColor: "rgba(25, 118, 210, 0.04)",
+            },
+          },
+          "& .Mui-selected": {
+            fontWeight: "bold",
+          },
+        }}
+        TabIndicatorProps={{
+          style: {
+            backgroundColor: theme.palette.primary.main,
+            height: 3,
+            borderRadius: "3px 3px 0 0",
+          },
+        }}
+        variant="scrollable"
+        scrollButtons="auto">
+        <Tab
+          label="All Orders"
+          value="all"
+          sx={{
+            fontWeight: statusFilter === "all" ? "bold" : "normal",
+          }}
+        />
+        <Tab
+          label="Pending"
+          value="pending"
+          icon={<PendingIcon />}
+          iconPosition="start"
+          sx={{
+            color:
+              statusFilter === "pending"
+                ? theme.palette.warning.main
+                : "inherit",
+            fontWeight: statusFilter === "pending" ? "bold" : "normal",
+            "&.Mui-selected": {
+              backgroundColor: "rgba(237, 108, 2, 0.1)",
+            },
+          }}
+        />
+        <Tab
+          label="Ready for Pickup"
+          value="ready for pickup"
+          icon={<StoreIcon />}
+          iconPosition="start"
+          sx={{
+            color:
+              statusFilter === "ready for pickup"
+                ? theme.palette.info.main
+                : "inherit",
+            fontWeight: statusFilter === "ready for pickup" ? "bold" : "normal",
+            "&.Mui-selected": {
+              backgroundColor: "rgba(2, 136, 209, 0.1)",
+            },
+          }}
+        />
+        <Tab
+          label="Out for Delivery"
+          value="out for delivery"
+          icon={<ShippingIcon />}
+          iconPosition="start"
+          sx={{
+            color:
+              statusFilter === "out for delivery"
+                ? theme.palette.primary.main
+                : "inherit",
+            fontWeight: statusFilter === "out for delivery" ? "bold" : "normal",
+            "&.Mui-selected": {
+              backgroundColor: "rgba(25, 118, 210, 0.1)",
+            },
+          }}
+        />
+        <Tab
+          label="Delivered"
+          value="delivered"
+          icon={<DeliveredIcon />}
+          iconPosition="start"
+          sx={{
+            color:
+              statusFilter === "delivered"
+                ? theme.palette.success.main
+                : "inherit",
+            fontWeight: statusFilter === "delivered" ? "bold" : "normal",
+            "&.Mui-selected": {
+              backgroundColor: "rgba(76, 175, 80, 0.1)",
+            },
+          }}
+        />
+      </Tabs>
 
       {loading ? (
         <Box
@@ -450,6 +547,20 @@ const OrdersPage = () => {
       ) : (
         renderOrders()
       )}
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={6000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}>
+        <Alert
+          onClose={() => setSnackbar({ ...snackbar, open: false })}
+          severity={snackbar.severity}
+          variant="filled">
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
