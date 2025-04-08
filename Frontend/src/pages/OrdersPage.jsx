@@ -234,24 +234,78 @@ const OrdersPage = () => {
       const { jsPDF } = await import("jspdf");
       const autoTable = (await import("jspdf-autotable")).default;
 
+      // Create PDF document with slightly larger size for better layout
       const doc = new jsPDF();
 
-      // Add header
-      doc.setFontSize(20);
-      doc.text("Order Receipt", 105, 15, { align: "center" });
+      // Define colors
+      const primaryColor = [25, 118, 210]; // Material UI primary blue
+      const secondaryColor = [66, 66, 66]; // Dark gray
+      const accentColor = [245, 124, 0]; // Orange for highlights
 
-      // Add order details
+      // Add stylish header with background
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, 210, 40, "F");
+
+      // Add title
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.text("RECEIPT", 105, 20, { align: "center" });
+
       doc.setFontSize(12);
-      doc.text(`Order ID: #${order._id.slice(-8).toUpperCase()}`, 14, 30);
-      doc.text(`Date: ${formatDate(order.createdAt)}`, 14, 37);
-      doc.text(`Status: ${order.status}`, 14, 44);
-      doc.text(
-        `Customer: ${order.customerName || user?.name || "Customer"}`,
-        14,
-        51
-      );
+      doc.text("RapidReach", 105, 30, { align: "center" });
 
-      // Add items table
+      // Add order details in a box
+      doc.setDrawColor(220, 220, 220);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(14, 45, 182, 40, 3, 3, "FD");
+
+      // Order details
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.setFontSize(11);
+      doc.text("ORDER DETAILS", 105, 52, { align: "center" });
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      // Left column
+      doc.text("Order ID:", 20, 60);
+      doc.text("Date:", 20, 67);
+      doc.text("Status:", 20, 74);
+
+      // Right column
+      doc.text("Customer:", 120, 60);
+      doc.text("Payment Method:", 120, 67);
+      doc.text("Email:", 120, 74);
+
+      // Left column values
+      doc.setFont("helvetica", "bold");
+      doc.text(`#${order._id.slice(-8).toUpperCase()}`, 55, 60);
+      doc.setFont("helvetica", "normal");
+      doc.text(`${formatDate(order.createdAt)}`, 55, 67);
+
+      // Add colored status
+      doc.setFillColor(...getStatusColorRGB(order.status));
+      doc.roundedRect(55, 70, 40, 6, 2, 2, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(8);
+      doc.text(order.status.toUpperCase(), 75, 74, { align: "center" });
+
+      // Right column values
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.setFontSize(10);
+      doc.text(`${order.customerName || user?.name || "Customer"}`, 155, 60);
+      doc.text(`${order.paymentMethod || "Cash on Delivery"}`, 155, 67);
+      doc.text(`${order.email || user?.email || "Not provided"}`, 155, 74);
+
+      // Add items table with improved styling
+      doc.setFontSize(11);
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setFont("helvetica", "bold");
+      doc.text("ORDER ITEMS", 105, 95, { align: "center" });
+
+      // Prepare table
       const tableColumn = ["Item", "Quantity", "Price", "Total"];
       const tableRows = [];
 
@@ -265,26 +319,87 @@ const OrdersPage = () => {
         tableRows.push(tableRow);
       });
 
+      // Add styled table
       autoTable(doc, {
         head: [tableColumn],
         body: tableRows,
-        startY: 58,
-        styles: { fontSize: 10 },
-        headStyles: { fillColor: [66, 139, 202] },
+        startY: 100,
+        styles: {
+          fontSize: 9,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: primaryColor,
+          textColor: [255, 255, 255],
+          fontStyle: "bold",
+          halign: "center",
+        },
+        alternateRowStyles: {
+          fillColor: [245, 245, 245],
+        },
+        columnStyles: {
+          0: { cellWidth: "auto" },
+          1: { cellWidth: 25, halign: "center" },
+          2: { cellWidth: 30, halign: "right" },
+          3: { cellWidth: 30, halign: "right" },
+        },
       });
 
-      // Add total after the table
-      const finalY = doc.lastAutoTable.finalY + 10;
-      doc.text(`Total Amount: $${order.totalAmount.toFixed(2)}`, 150, finalY, {
+      // Add total section with highlight
+      const finalY = doc.lastAutoTable.finalY + 5;
+
+      // Add subtotal, tax and total
+      doc.setDrawColor(220, 220, 220);
+      doc.setFillColor(250, 250, 250);
+      doc.roundedRect(120, finalY, 76, 25, 2, 2, "FD");
+
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.setFontSize(9);
+
+      // Calculate subtotal and tax (or use provided values)
+      const subtotal = order.subtotal || order.totalAmount / 1.13;
+      const tax = order.tax || order.totalAmount - subtotal;
+
+      doc.text("Subtotal:", 125, finalY + 7);
+      doc.text(`$${subtotal.toFixed(2)}`, 190, finalY + 7, { align: "right" });
+
+      doc.text("Tax (13%):", 125, finalY + 14);
+      doc.text(`$${tax.toFixed(2)}`, 190, finalY + 14, { align: "right" });
+
+      // Total with highlight
+      doc.setFont("helvetica", "bold");
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(120, finalY + 16, 76, 0.5, "F");
+      doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.setFontSize(11);
+      doc.text("TOTAL:", 125, finalY + 23);
+      doc.text(`$${order.totalAmount.toFixed(2)}`, 190, finalY + 23, {
         align: "right",
       });
 
-      // Add footer
+      // Add thank you message
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
       doc.setFontSize(10);
+      doc.text("Thank you for your order!", 105, finalY + 35, {
+        align: "center",
+      });
+
+      // Add footer with contact info
+      doc.setFillColor(240, 240, 240);
+      doc.rect(0, 270, 210, 27, "F");
+
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(8);
+      doc.text("RapidReach Shopping", 105, 277, { align: "center" });
+      doc.text("support@rapidreach.example.com | 1-800-RAPID-REACH", 105, 282, {
+        align: "center",
+      });
       doc.text(
-        `Generated on ${new Date().toLocaleDateString()} - RapidReach`,
+        `Generated on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()}`,
         105,
-        doc.internal.pageSize.height - 10,
+        287,
         { align: "center" }
       );
 
@@ -303,6 +418,22 @@ const OrdersPage = () => {
         message: "Failed to download receipt: " + error.message,
         severity: "error",
       });
+    }
+  };
+
+  // Helper function to get RGB color values for order status
+  const getStatusColorRGB = (status) => {
+    switch (status.toLowerCase()) {
+      case "pending":
+        return [237, 108, 2]; // Orange
+      case "ready for pickup":
+        return [2, 136, 209]; // Blue
+      case "out for delivery":
+        return [25, 118, 210]; // Primary blue
+      case "delivered":
+        return [76, 175, 80]; // Green
+      default:
+        return [120, 120, 120]; // Grey
     }
   };
 
